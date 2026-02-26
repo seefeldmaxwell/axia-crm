@@ -10,13 +10,13 @@ import {
   UserPlus,
   ChevronRight,
   ArrowUpRight,
-  Circle,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getDeals, getActivities, getLeads } from "@/lib/store";
+import { useDeals, useActivities, useLeads } from "@/hooks/use-data";
 import { formatCurrency } from "@/lib/utils";
 
 function getGreeting(): string {
@@ -51,11 +51,14 @@ const ratingDotColor: Record<string, string> = {
 export default function HomePage() {
   const { user, org } = useAuth();
 
+  const { data: deals, loading: dealsLoading } = useDeals(org?.id);
+  const { data: activities, loading: activitiesLoading } = useActivities(org?.id);
+  const { data: leads, loading: leadsLoading } = useLeads(org?.id);
+
+  const loading = dealsLoading || activitiesLoading || leadsLoading;
+
   const data = useMemo(() => {
-    if (!org) return null;
-    const deals = getDeals(org.id);
-    const activities = getActivities(org.id);
-    const leads = getLeads(org.id);
+    if (!deals || !activities || !leads) return null;
 
     const activeDeals = deals.filter((d) => !d.stage.startsWith("Closed"));
     const pipelineValue = activeDeals.reduce((sum, d) => sum + d.amount, 0);
@@ -85,9 +88,21 @@ export default function HomePage() {
       topDeals,
       recentLeads,
     };
-  }, [org]);
+  }, [deals, activities, leads]);
 
-  if (!user || !org || !data) return null;
+  if (!user || !org) return null;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data) return null;
 
   const today = format(new Date(), "MMM dd, yyyy").toUpperCase();
   const firstName = user.name.split(" ")[0];

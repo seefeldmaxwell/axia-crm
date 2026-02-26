@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,14 @@ import { Modal } from "@/components/ui/modal";
 import { Input, Select } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
-import { getActivities, setActivities } from "@/lib/store";
+import { api, mapActivity, toSnake } from "@/lib/api";
 import { Activity, ActivityStatus, ActivityType } from "@/lib/types";
-import { generateId } from "@/lib/utils";
 import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from "@hello-pangea/dnd";
 import {
   Plus, Filter, Settings2, Star, ChevronDown, ChevronLeft,
-  LayoutGrid, BarChart3, List,
+  LayoutGrid, BarChart3, List, Loader2,
 } from "lucide-react";
 
 type BoardColumn = {
@@ -75,6 +74,7 @@ export default function ActivitiesPage() {
   const { user, org } = useAuth();
   const { toast } = useToast();
   const [activities, setActivitiesLocal] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"board" | "analytics" | "backlog">("board");
   const [showNew, setShowNew] = useState(false);
   const [newColId, setNewColId] = useState("new");
@@ -84,9 +84,23 @@ export default function ActivitiesPage() {
     subject: "", type: "task" as ActivityType, dueDate: "",
   });
 
+  const fetchActivities = useCallback(async () => {
+    if (!org) return;
+    try {
+      setLoading(true);
+      const raw = await api.getActivities();
+      setActivitiesLocal(raw.map(mapActivity) as Activity[]);
+    } catch (err) {
+      console.error("Failed to fetch activities", err);
+      toast("Failed to load activities");
+    } finally {
+      setLoading(false);
+    }
+  }, [org, toast]);
+
   useEffect(() => {
-    if (org) setActivitiesLocal(getActivities(org.id));
-  }, [org]);
+    fetchActivities();
+  }, [fetchActivities]);
 
   // Group items into drop zones
   const dropZoneItems = useMemo(() => {
@@ -104,46 +118,68 @@ export default function ActivitiesPage() {
     return groups;
   }, [activities]);
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !org) return;
     const destColId = result.destination.droppableId;
     const newStatus = COL_TO_STATUS[destColId];
     if (!newStatus) return;
     const actId = result.draggableId;
-    const allRaw = JSON.parse(localStorage.getItem("axia_activities") || "[]") as Activity[];
-    const updated = allRaw.map((a) =>
-      a.id === actId ? {
-        ...a,
-        status: newStatus,
-        ...(newStatus === "Done" ? { completedAt: new Date().toISOString().split("T")[0] } : {}),
-      } : a
+
+    // Optimistic update
+    setActivitiesLocal((prev) =>
+      prev.map((a) =>
+        a.id === actId
+          ? {
+              ...a,
+              status: newStatus,
+              ...(newStatus === "Done" ? { completedAt: new Date().toISOString().split("T")[0] } : {}),
+            }
+          : a
+      )
     );
-    setActivities(updated);
-    setActivitiesLocal(updated.filter((a) => a.orgId === org.id));
     toast(`Activity moved to ${newStatus}`);
+
+    try {
+      await api.updateActivity(
+        actId,
+        toSnake({
+          status: newStatus,
+          ...(newStatus === "Done" ? { completedAt: new Date().toISOString().split("T")[0] } : {}),
+        })
+      );
+      await fetchActivities();
+    } catch (err) {
+      console.error("Failed to update activity", err);
+      toast("Failed to update activity");
+      await fetchActivities();
+    }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!org || !form.subject) return;
     const targetStatus = COL_TO_STATUS[newColId] || "To Do";
-    const newAct: Activity = {
-      id: generateId(),
-      type: form.type,
-      subject: form.subject,
-      status: targetStatus,
-      dueDate: form.dueDate || new Date().toISOString().split("T")[0],
-      ownerId: user?.id || "1",
-      ownerName: user?.name || "Demo User",
-      orgId: org.id,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    const allRaw = JSON.parse(localStorage.getItem("axia_activities") || "[]") as Activity[];
-    const updated = [...allRaw, newAct];
-    setActivities(updated);
-    setActivitiesLocal(updated.filter((a) => a.orgId === org.id));
-    setShowNew(false);
-    setForm({ subject: "", type: "task", dueDate: "" });
-    toast("Activity created");
+
+    try {
+      await api.createActivity(
+        toSnake({
+          type: form.type,
+          subject: form.subject,
+          status: targetStatus,
+          dueDate: form.dueDate || new Date().toISOString().split("T")[0],
+          ownerId: user?.id || "1",
+          ownerName: user?.name || "Demo User",
+          orgId: org.id,
+          createdAt: new Date().toISOString().split("T")[0],
+        })
+      );
+      await fetchActivities();
+      setShowNew(false);
+      setForm({ subject: "", type: "task", dueDate: "" });
+      toast("Activity created");
+    } catch (err) {
+      console.error("Failed to create activity", err);
+      toast("Failed to create activity");
+    }
   };
 
   const toggleCollapse = (colId: string) => {
@@ -292,6 +328,11 @@ export default function ActivitiesPage() {
 
         {/* Board */}
         <div className="flex-1 overflow-x-auto p-4">
+          {loading && activities.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="animate-spin" size={32} style={{ color: "var(--ab-text-secondary)" }} />
+            </div>
+          ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex gap-2 min-h-[500px]">
               {COLUMNS.map((col) => {
@@ -397,6 +438,7 @@ export default function ActivitiesPage() {
               })}
             </div>
           </DragDropContext>
+          )}
         </div>
       </div>
 

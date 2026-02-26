@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { getActivities, setActivities } from "@/lib/store";
-import { generateId } from "@/lib/utils";
+import { api, mapActivity, toSnake } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input, Textarea, Select } from "@/components/ui/input";
@@ -63,7 +62,8 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1, 1));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBookModal, setShowBookModal] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [activities, setActivitiesState] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [bookForm, setBookForm] = useState({
     subject: "",
     type: "meeting" as ActivityType,
@@ -71,13 +71,22 @@ export default function CalendarPage() {
     dueDate: "",
   });
 
-  const activities = useMemo(() => {
-    if (!org) return [];
-    // refreshKey dependency forces re-read after booking
-    void refreshKey;
-    return getActivities(org.id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [org, refreshKey]);
+  const fetchActivities = useCallback(async () => {
+    if (!org) return;
+    try {
+      setLoading(true);
+      const raw = await api.getActivities();
+      setActivitiesState(raw.map(mapActivity) as Activity[]);
+    } catch (err) {
+      console.error("Failed to fetch activities:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [org]);
+
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -121,34 +130,32 @@ export default function CalendarPage() {
     setSelectedDate(new Date());
   };
 
-  const handleBookAppointment = () => {
+  const handleBookAppointment = async () => {
     if (!org || !user || !bookForm.subject) return;
 
-    const rawAll = JSON.parse(
-      localStorage.getItem("axia_activities") || "[]"
-    ) as Activity[];
-
-    const newActivity: Activity = {
-      id: generateId(),
-      type: bookForm.type,
-      subject: bookForm.subject,
-      description: bookForm.description || undefined,
-      status: "To Do",
-      dueDate:
-        bookForm.dueDate ||
-        format(selectedDate || new Date(), "yyyy-MM-dd"),
-      ownerId: user.id,
-      ownerName: user.name,
-      orgId: org.id,
-      createdAt: format(new Date(), "yyyy-MM-dd"),
-    };
-
-    rawAll.push(newActivity);
-    setActivities(rawAll);
-    setShowBookModal(false);
-    setBookForm({ subject: "", type: "meeting", description: "", dueDate: "" });
-    setRefreshKey((k) => k + 1);
-    toast("Appointment booked");
+    try {
+      await api.createActivity(
+        toSnake({
+          type: bookForm.type,
+          subject: bookForm.subject,
+          description: bookForm.description || undefined,
+          status: "To Do",
+          dueDate:
+            bookForm.dueDate ||
+            format(selectedDate || new Date(), "yyyy-MM-dd"),
+          ownerId: user.id,
+          ownerName: user.name,
+          orgId: org.id,
+        })
+      );
+      setShowBookModal(false);
+      setBookForm({ subject: "", type: "meeting", description: "", dueDate: "" });
+      await fetchActivities();
+      toast("Appointment booked");
+    } catch (err) {
+      console.error("Failed to book appointment:", err);
+      toast("Failed to book appointment");
+    }
   };
 
   if (!org) return null;

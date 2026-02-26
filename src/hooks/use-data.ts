@@ -5,10 +5,12 @@ import {
   apiGet, apiPost, apiPut, apiDelete, toSnake,
   mapContact, mapAccount, mapDeal, mapActivity, mapLead, mapCase,
   mapCallScript, mapCallRecord, mapCampaign, mapProduct, mapIntegration, mapMarketingPost,
+  mapVendor, mapClient,
 } from "@/lib/api";
 import type {
   Contact, Account, Deal, Activity, Lead, Case,
   CallScript, CallRecord, Campaign, Product, Integration,
+  Vendor, Client,
 } from "@/lib/types";
 
 // ─── Generic list hook ───
@@ -393,6 +395,146 @@ export function useUpdateIntegration() {
     } finally { setLoading(false); }
   };
   return { mutate, loading };
+}
+
+// ─── Delete Activity ───
+export function useDeleteActivity() {
+  const mutate = async (id: string) => { await apiDelete(`/api/activities/${id}`); };
+  return { mutate };
+}
+
+// ─── Products CRUD ───
+export function useCreateProduct() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (data: Partial<Product> & { orgId: string }) => {
+    setLoading(true);
+    try {
+      const res = await apiPost<any>("/api/products", toSnake(data));
+      return mapProduct(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useUpdateProduct() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (id: string, data: Partial<Product>) => {
+    setLoading(true);
+    try {
+      const res = await apiPut<any>(`/api/products/${id}`, toSnake(data));
+      return mapProduct(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useDeleteProduct() {
+  const mutate = async (id: string) => { await apiDelete(`/api/products/${id}`); };
+  return { mutate };
+}
+
+// ─── Vendors ───
+export function useVendors(orgId: string | undefined) {
+  return useList<Vendor>("/api/vendors", mapVendor, orgId);
+}
+
+export function useCreateVendor() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (data: Partial<Vendor> & { orgId: string }) => {
+    setLoading(true);
+    try {
+      const res = await apiPost<any>("/api/vendors", toSnake(data));
+      return mapVendor(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useUpdateVendor() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (id: string, data: Partial<Vendor>) => {
+    setLoading(true);
+    try {
+      const res = await apiPut<any>(`/api/vendors/${id}`, toSnake(data));
+      return mapVendor(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useDeleteVendor() {
+  const mutate = async (id: string) => { await apiDelete(`/api/vendors/${id}`); };
+  return { mutate };
+}
+
+// ─── Clients ───
+export function useClients(orgId: string | undefined) {
+  return useList<Client>("/api/clients", mapClient, orgId);
+}
+
+export function useCreateClient() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (data: Partial<Client> & { orgId: string }) => {
+    setLoading(true);
+    try {
+      const res = await apiPost<any>("/api/clients", toSnake(data));
+      return mapClient(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useUpdateClient() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (id: string, data: Partial<Client>) => {
+    setLoading(true);
+    try {
+      const res = await apiPut<any>(`/api/clients/${id}`, toSnake(data));
+      return mapClient(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useDeleteClient() {
+  const mutate = async (id: string) => { await apiDelete(`/api/clients/${id}`); };
+  return { mutate };
+}
+
+// ─── Campaign CRUD ───
+export function useUpdateCampaign() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (id: string, data: Partial<Campaign>) => {
+    setLoading(true);
+    try {
+      const res = await apiPut<any>(`/api/marketing/campaigns/${id}`, toSnake(data));
+      return mapCampaign(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useDeleteCampaign() {
+  const mutate = async (id: string) => { await apiDelete(`/api/marketing/campaigns/${id}`); };
+  return { mutate };
+}
+
+// ─── Marketing Post CRUD ───
+export function useUpdateMarketingPost() {
+  const [loading, setLoading] = useState(false);
+  const mutate = async (id: string, data: any) => {
+    setLoading(true);
+    try {
+      const res = await apiPut<any>(`/api/marketing/posts/${id}`, toSnake(data));
+      return mapMarketingPost(res);
+    } finally { setLoading(false); }
+  };
+  return { mutate, loading };
+}
+
+export function useDeleteMarketingPost() {
+  const mutate = async (id: string) => { await apiDelete(`/api/marketing/posts/${id}`); };
+  return { mutate };
 }
 
 // ─── Reports Dashboard ───

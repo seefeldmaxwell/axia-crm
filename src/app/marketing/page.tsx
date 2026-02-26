@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
+import { api, mapMarketingPost, toSnake } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +18,7 @@ import {
   Instagram,
   Facebook,
   Clock,
-  Heart,
-  MessageCircle,
-  Share2,
+  Loader2,
 } from "lucide-react";
 
 // ── Platform definitions ──
@@ -30,62 +29,6 @@ const PLATFORMS = [
   { id: "instagram", name: "Instagram", icon: Instagram, color: "#E1306C", connected: false },
   { id: "facebook", name: "Facebook", icon: Facebook, color: "#1877F2", connected: true },
 ] as const;
-
-// ── Mock scheduled posts ──
-
-const mockQueuePosts = [
-  {
-    id: "q1",
-    content: "Excited to announce our new CRM features that will help sales teams close deals 40% faster. Link in bio.",
-    platforms: ["linkedin", "x"],
-    scheduledAt: "2026-02-26T10:00:00",
-    status: "Scheduled" as const,
-  },
-  {
-    id: "q2",
-    content: "Join our upcoming webinar on modern sales strategies. Register now for free! #SalesExcellence",
-    platforms: ["linkedin", "facebook"],
-    scheduledAt: "2026-02-27T14:30:00",
-    status: "Scheduled" as const,
-  },
-  {
-    id: "q3",
-    content: "Customer spotlight: How Acme Corp increased their pipeline by 3x using our platform. Read the full story.",
-    platforms: ["linkedin", "x", "facebook"],
-    scheduledAt: "2026-02-28T09:00:00",
-    status: "Scheduled" as const,
-  },
-];
-
-const mockPublishedPosts = [
-  {
-    id: "p1",
-    content: "We just crossed 10,000 active users! Thank you to our incredible community.",
-    platforms: ["linkedin", "x"],
-    publishedAt: "2026-02-24T11:00:00",
-    likes: 142,
-    comments: 28,
-    shares: 15,
-  },
-  {
-    id: "p2",
-    content: "5 tips for building a high-performing sales pipeline in 2026. Thread below.",
-    platforms: ["x"],
-    publishedAt: "2026-02-23T09:30:00",
-    likes: 89,
-    comments: 12,
-    shares: 31,
-  },
-  {
-    id: "p3",
-    content: "Our team at the SaaS Connect conference. Great conversations about the future of CRM.",
-    platforms: ["linkedin", "facebook"],
-    publishedAt: "2026-02-22T16:00:00",
-    likes: 203,
-    comments: 41,
-    shares: 22,
-  },
-];
 
 // ══════════════════════════════════════════════════════════════
 // Main Marketing Page
@@ -101,7 +44,32 @@ export default function MarketingPage() {
   );
   const [activeTab, setActiveTab] = useState("queue");
 
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const raw = await api.getMarketingPosts();
+      setPosts(raw.map(mapMarketingPost));
+    } catch (err) {
+      console.error("Failed to fetch marketing posts:", err);
+      toast("Failed to load posts", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
   if (!org) return null;
+
+  const queuePosts = posts.filter(
+    (p) => p.status === "Scheduled" || p.status === "Draft"
+  );
+  const publishedPosts = posts.filter((p) => p.status === "Published");
 
   const togglePlatform = (id: string) => {
     setSelectedPlatforms((prev) => {
@@ -115,16 +83,45 @@ export default function MarketingPage() {
     });
   };
 
-  const handlePostNow = () => {
+  const handlePostNow = async () => {
     if (!composerText.trim()) return;
-    toast("Post published successfully", "success");
-    setComposerText("");
+    try {
+      await api.createMarketingPost(
+        toSnake({
+          platform: Array.from(selectedPlatforms).join(","),
+          text: composerText,
+          status: "Published",
+          orgId: org.id,
+        })
+      );
+      toast("Post published successfully", "success");
+      setComposerText("");
+      await fetchPosts();
+    } catch (err) {
+      console.error("Failed to publish post:", err);
+      toast("Failed to publish post", "error");
+    }
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!composerText.trim()) return;
-    toast("Post scheduled", "success");
-    setComposerText("");
+    try {
+      await api.createMarketingPost(
+        toSnake({
+          platform: Array.from(selectedPlatforms).join(","),
+          text: composerText,
+          status: "Scheduled",
+          scheduledAt: new Date().toISOString(),
+          orgId: org.id,
+        })
+      );
+      toast("Post scheduled", "success");
+      setComposerText("");
+      await fetchPosts();
+    } catch (err) {
+      console.error("Failed to schedule post:", err);
+      toast("Failed to schedule post", "error");
+    }
   };
 
   const getPlatformById = (id: string) =>
@@ -309,15 +306,41 @@ export default function MarketingPage() {
 
             {/* Tab content */}
             <Card className="flex-1 overflow-y-auto">
-              {activeTab === "queue" && (
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2
+                    size={24}
+                    className="animate-spin"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                  <span
+                    className="ml-2 text-[13px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Loading posts...
+                  </span>
+                </div>
+              )}
+
+              {!loading && activeTab === "queue" && (
                 <div>
-                  {mockQueuePosts.map((post, i) => (
+                  {queuePosts.length === 0 && (
+                    <div className="flex items-center justify-center py-12">
+                      <span
+                        className="text-[13px]"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        No scheduled posts yet. Use the composer above to schedule one.
+                      </span>
+                    </div>
+                  )}
+                  {queuePosts.map((post, i) => (
                     <div
                       key={post.id}
                       className="px-4 py-3.5 transition-colors"
                       style={{
                         borderBottom:
-                          i < mockQueuePosts.length - 1
+                          i < queuePosts.length - 1
                             ? "1px solid var(--border-secondary)"
                             : undefined,
                       }}
@@ -334,11 +357,11 @@ export default function MarketingPage() {
                         className="text-[13px] mb-2 line-clamp-2"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {post.content}
+                        {post.text}
                       </p>
                       <div className="flex items-center gap-2">
-                        {post.platforms.map((pid) => {
-                          const plat = getPlatformById(pid);
+                        {post.platform.split(",").map((pid: string) => {
+                          const plat = getPlatformById(pid.trim());
                           if (!plat) return null;
                           const Icon = plat.icon;
                           return (
@@ -355,16 +378,20 @@ export default function MarketingPage() {
                           );
                         })}
                         <span className="flex-1" />
-                        <Clock
-                          size={12}
-                          style={{ color: "var(--text-tertiary)" }}
-                        />
-                        <span
-                          className="text-[11px] data-value"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {formatDateTime(post.scheduledAt)}
-                        </span>
+                        {post.scheduledAt && (
+                          <>
+                            <Clock
+                              size={12}
+                              style={{ color: "var(--text-tertiary)" }}
+                            />
+                            <span
+                              className="text-[11px] data-value"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              {formatDateTime(post.scheduledAt)}
+                            </span>
+                          </>
+                        )}
                         <Badge variant="info">{post.status}</Badge>
                       </div>
                     </div>
@@ -372,15 +399,25 @@ export default function MarketingPage() {
                 </div>
               )}
 
-              {activeTab === "published" && (
+              {!loading && activeTab === "published" && (
                 <div>
-                  {mockPublishedPosts.map((post, i) => (
+                  {publishedPosts.length === 0 && (
+                    <div className="flex items-center justify-center py-12">
+                      <span
+                        className="text-[13px]"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        No published posts yet. Use the composer above to publish one.
+                      </span>
+                    </div>
+                  )}
+                  {publishedPosts.map((post, i) => (
                     <div
                       key={post.id}
                       className="px-4 py-3.5 transition-colors"
                       style={{
                         borderBottom:
-                          i < mockPublishedPosts.length - 1
+                          i < publishedPosts.length - 1
                             ? "1px solid var(--border-secondary)"
                             : undefined,
                       }}
@@ -397,11 +434,11 @@ export default function MarketingPage() {
                         className="text-[13px] mb-2 line-clamp-2"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {post.content}
+                        {post.text}
                       </p>
                       <div className="flex items-center gap-2">
-                        {post.platforms.map((pid) => {
-                          const plat = getPlatformById(pid);
+                        {post.platform.split(",").map((pid: string) => {
+                          const plat = getPlatformById(pid.trim());
                           if (!plat) return null;
                           const Icon = plat.icon;
                           return (
@@ -418,28 +455,20 @@ export default function MarketingPage() {
                           );
                         })}
                         <span className="flex-1" />
-                        <div
-                          className="flex items-center gap-3 text-[11px]"
+                        <span
+                          className="text-[11px] data-value"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          <span className="flex items-center gap-1">
-                            <Heart size={11} /> {post.likes}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MessageCircle size={11} />{" "}
-                            {post.comments}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Share2 size={11} /> {post.shares}
-                          </span>
-                        </div>
+                          {formatDateTime(post.createdAt)}
+                        </span>
+                        <Badge variant="success">Published</Badge>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {activeTab === "calendar" && (
+              {!loading && activeTab === "calendar" && (
                 <CardContent>
                   <div className="grid grid-cols-7 gap-2">
                     {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(

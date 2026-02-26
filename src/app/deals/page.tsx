@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,15 @@ import { Modal } from "@/components/ui/modal";
 import { Input, Select } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
-import { getDeals, setDeals } from "@/lib/store";
+import { api, mapDeal, toSnake } from "@/lib/api";
 import { Deal, DealStage } from "@/lib/types";
-import { formatCurrency, generateId } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from "@hello-pangea/dnd";
 import {
   Plus, Filter, Settings2, Star, ChevronDown, LayoutGrid, BarChart3, List,
+  Loader2,
 } from "lucide-react";
 
 const STAGES: { id: DealStage; label: string; color: string; wipLimit: number }[] = [
@@ -40,6 +41,7 @@ export default function DealsPage() {
   const { user, org } = useAuth();
   const { toast } = useToast();
   const [deals, setDealsLocal] = useState<Deal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"board" | "analytics" | "backlog">("board");
   const [showNew, setShowNew] = useState(false);
   const [newStage, setNewStage] = useState<DealStage>("Prospecting");
@@ -49,9 +51,21 @@ export default function DealsPage() {
     closeDate: "", accountName: "",
   });
 
+  const fetchDeals = useCallback(async () => {
+    try {
+      const raw = await api.getDeals();
+      setDealsLocal(raw.map(mapDeal));
+    } catch (err) {
+      console.error("Failed to fetch deals", err);
+      toast("Failed to load deals");
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
-    if (org) setDealsLocal(getDeals(org.id));
-  }, [org]);
+    if (org) fetchDeals();
+  }, [org, fetchDeals]);
 
   const columnItems = useMemo(() => {
     const groups: Record<string, Deal[]> = {};
@@ -62,47 +76,84 @@ export default function DealsPage() {
     return groups;
   }, [deals]);
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !org) return;
     const destStage = result.destination.droppableId as DealStage;
     const dealId = result.draggableId;
-    const allDeals = getDeals(org.id);
-    const allRaw = JSON.parse(localStorage.getItem("axia_deals") || "[]") as Deal[];
-    const updated = allRaw.map((d) =>
-      d.id === dealId ? { ...d, stage: destStage, probability: destStage === "Closed Won" ? 100 : destStage === "Closed Lost" ? 0 : d.probability, updatedAt: new Date().toISOString().split("T")[0] } : d
+
+    // Optimistic update
+    setDealsLocal((prev) =>
+      prev.map((d) =>
+        d.id === dealId
+          ? {
+              ...d,
+              stage: destStage,
+              probability: destStage === "Closed Won" ? 100 : destStage === "Closed Lost" ? 0 : d.probability,
+              updatedAt: new Date().toISOString().split("T")[0],
+            }
+          : d
+      )
     );
-    setDeals(updated);
-    setDealsLocal(updated.filter((d) => d.orgId === org.id));
-    toast(`Deal moved to ${destStage}`);
+
+    try {
+      const deal = deals.find((d) => d.id === dealId);
+      await api.updateDeal(
+        dealId,
+        toSnake({
+          stage: destStage,
+          probability: destStage === "Closed Won" ? 100 : destStage === "Closed Lost" ? 0 : (deal?.probability ?? 50),
+          updatedAt: new Date().toISOString().split("T")[0],
+        })
+      );
+      await fetchDeals();
+      toast(`Deal moved to ${destStage}`);
+    } catch (err) {
+      console.error("Failed to update deal", err);
+      toast("Failed to move deal");
+      await fetchDeals();
+    }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!org || !form.name) return;
-    const newDeal: Deal = {
-      id: generateId(),
-      name: form.name,
-      amount: Number(form.amount) || 0,
-      stage: form.stage,
-      closeDate: form.closeDate || new Date().toISOString().split("T")[0],
-      accountId: "",
-      accountName: form.accountName,
-      probability: 50,
-      ownerId: user?.id || "1",
-      ownerName: user?.name || "Demo User",
-      orgId: org.id,
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    const allRaw = JSON.parse(localStorage.getItem("axia_deals") || "[]") as Deal[];
-    const updated = [...allRaw, newDeal];
-    setDeals(updated);
-    setDealsLocal(updated.filter((d) => d.orgId === org.id));
-    setShowNew(false);
-    setForm({ name: "", amount: "", stage: "Prospecting", closeDate: "", accountName: "" });
-    toast("Deal created");
+    try {
+      await api.createDeal(
+        toSnake({
+          name: form.name,
+          amount: Number(form.amount) || 0,
+          stage: form.stage,
+          closeDate: form.closeDate || new Date().toISOString().split("T")[0],
+          accountId: "",
+          accountName: form.accountName,
+          probability: 50,
+          ownerId: user?.id || "1",
+          ownerName: user?.name || "Demo User",
+          orgId: org.id,
+          createdAt: new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString().split("T")[0],
+        })
+      );
+      await fetchDeals();
+      setShowNew(false);
+      setForm({ name: "", amount: "", stage: "Prospecting", closeDate: "", accountName: "" });
+      toast("Deal created");
+    } catch (err) {
+      console.error("Failed to create deal", err);
+      toast("Failed to create deal");
+    }
   };
 
   if (!org) return null;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="animate-spin" size={32} style={{ color: "var(--ab-blue)" }} />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

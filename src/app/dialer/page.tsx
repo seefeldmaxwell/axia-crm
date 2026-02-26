@@ -3,13 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import {
-  getLeads,
-  getCallScripts,
-  getCallRecords,
-  setCallRecords,
-} from "@/lib/store";
-import { generateId } from "@/lib/utils";
+import { api, mapLead, mapCallScript, mapCallRecord, toSnake } from "@/lib/api";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +30,7 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Loader2,
 } from "lucide-react";
 
 type Temperature = "Hot" | "Warm" | "Cold";
@@ -111,24 +106,39 @@ const tempBadgeVariant = (t: string) => {
 export default function DialerPage() {
   const { user, org } = useAuth();
   const { toast } = useToast();
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const leads = useMemo(() => {
-    if (!org) return [];
-    return getLeads(org.id);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [scripts, setScripts] = useState<CallScript[]>([]);
+  const [callRecords, setCallRecordsState] = useState<CallRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch leads, scripts, and call records from the API
+  useEffect(() => {
+    if (!org) return;
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const [rawLeads, rawScripts, rawRecords] = await Promise.all([
+          api.getLeads(),
+          api.getCallScripts(),
+          api.getCallRecords(),
+        ]);
+        if (cancelled) return;
+        setLeads(rawLeads.map(mapLead));
+        setScripts(rawScripts.map(mapCallScript));
+        setCallRecordsState(rawRecords.map(mapCallRecord));
+      } catch (err) {
+        console.error("Failed to load dialer data:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
   }, [org]);
-
-  const scripts = useMemo(() => {
-    if (!org) return [];
-    return getCallScripts(org.id);
-  }, [org]);
-
-  const callRecords = useMemo(() => {
-    if (!org) return [];
-    void refreshKey;
-    return getCallRecords(org.id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [org, refreshKey]);
 
   const [queue, setQueue] = useState<Lead[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -230,30 +240,32 @@ export default function DialerPage() {
   }, []);
 
   const endCall = useCallback(
-    (disposition: Disposition) => {
+    async (disposition: Disposition) => {
       if (!org || !user || !queue[currentIdx]) return;
       setCalling(false);
       if (timerRef.current) clearInterval(timerRef.current);
 
       const lead = queue[currentIdx];
-      const allRecords = JSON.parse(
-        localStorage.getItem("axia_call_records") || "[]"
-      ) as CallRecord[];
 
-      const newRecord: CallRecord = {
-        id: generateId(),
-        contactId: lead.id,
-        contactName: `${lead.firstName} ${lead.lastName}`,
-        disposition,
-        duration: timer,
-        notes: notes || undefined,
-        scriptId: activeScript?.id,
-        orgId: org.id,
-        createdAt: new Date().toISOString(),
-      };
+      try {
+        await api.createCallRecord(
+          toSnake({
+            contactId: lead.id,
+            contactName: `${lead.firstName} ${lead.lastName}`,
+            disposition,
+            duration: timer,
+            notes: notes || undefined,
+            scriptId: activeScript?.id,
+            orgId: org.id,
+          })
+        );
 
-      allRecords.push(newRecord);
-      setCallRecords(allRecords);
+        // Refetch call records from the API
+        const rawRecords = await api.getCallRecords();
+        setCallRecordsState(rawRecords.map(mapCallRecord));
+      } catch (err) {
+        console.error("Failed to save call record:", err);
+      }
 
       setCalledIds((prev) => new Set(prev).add(lead.id));
       setDispositionsMap((prev) => ({
@@ -262,7 +274,6 @@ export default function DialerPage() {
       }));
       setNotes("");
       setTimer(0);
-      setRefreshKey((k) => k + 1);
       toast(`Call logged: ${disposition}`);
 
       if (currentIdx < queue.length - 1) {
@@ -301,6 +312,34 @@ export default function DialerPage() {
   const currentLead = queue[currentIdx];
 
   if (!org) return null;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div
+          className="flex items-center justify-center"
+          style={{
+            background: "var(--bg-primary)",
+            height: "calc(100vh - 0px)",
+          }}
+        >
+          <div className="flex flex-col items-center gap-3">
+            <Loader2
+              size={32}
+              className="animate-spin"
+              style={{ color: "var(--accent-blue)" }}
+            />
+            <p
+              className="text-[13px]"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Loading dialer...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card } from "@/components/ui/card";
@@ -11,10 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Search } from "@/components/ui/search";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
-import { getContacts, setContacts } from "@/lib/store";
-import { generateId } from "@/lib/utils";
+import { api, mapContact, toSnake } from "@/lib/api";
 import type { Contact } from "@/lib/types";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export default function ContactsPage() {
   const { user, org } = useAuth();
@@ -22,25 +21,8 @@ export default function ContactsPage() {
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const contacts = useMemo(() => {
-    if (!org) return [];
-    return getContacts(org.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [org, refreshKey]);
-
-  const filtered = useMemo(() => {
-    if (!search) return contacts;
-    const s = search.toLowerCase();
-    return contacts.filter(
-      (c) =>
-        `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
-        c.email.toLowerCase().includes(s) ||
-        c.phone.toLowerCase().includes(s) ||
-        c.accountName.toLowerCase().includes(s)
-    );
-  }, [contacts, search]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -54,38 +36,55 @@ export default function ContactsPage() {
   const resetForm = () =>
     setForm({ firstName: "", lastName: "", title: "", email: "", phone: "", accountName: "" });
 
-  const handleCreate = () => {
+  const fetchContacts = useCallback(async () => {
+    if (!org) return;
+    try {
+      const raw = await api.getContacts();
+      setContacts(raw.map(mapContact));
+    } catch {
+      toast("Failed to load contacts");
+    } finally {
+      setLoading(false);
+    }
+  }, [org]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
+
+  const filtered = useMemo(() => {
+    if (!search) return contacts;
+    const s = search.toLowerCase();
+    return contacts.filter(
+      (c) =>
+        `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
+        c.email.toLowerCase().includes(s) ||
+        c.phone.toLowerCase().includes(s) ||
+        c.accountName.toLowerCase().includes(s)
+    );
+  }, [contacts, search]);
+
+  const handleCreate = async () => {
     if (!org || !form.firstName.trim() || !form.lastName.trim()) return;
-    const now = new Date().toISOString().split("T")[0];
-    const newContact: Contact = {
-      id: generateId(),
-      firstName: form.firstName,
-      lastName: form.lastName,
-      title: form.title,
-      accountId: "",
-      accountName: form.accountName,
-      phone: form.phone,
-      email: form.email,
-      mailingAddress: "",
-      ownerId: user?.id || "1",
-      ownerName: user?.name || "Demo User",
-      orgId: org.id,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const all = (() => {
-      try {
-        const raw = localStorage.getItem("axia_contacts");
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    })();
-    setContacts([...all, newContact]);
-    setShowNew(false);
-    resetForm();
-    setRefreshKey((k) => k + 1);
-    toast("Contact created successfully");
+    try {
+      await api.createContact(toSnake({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        title: form.title,
+        email: form.email,
+        phone: form.phone,
+        accountName: form.accountName,
+        ownerId: user?.id || "",
+        ownerName: user?.name || "",
+        orgId: org.id,
+      }));
+      setShowNew(false);
+      resetForm();
+      await fetchContacts();
+      toast("Contact created successfully");
+    } catch {
+      toast("Failed to create contact");
+    }
   };
 
   const handleEdit = (contact: Contact) => {
@@ -100,49 +99,34 @@ export default function ContactsPage() {
     });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editId) return;
-    const all = (() => {
-      try {
-        const raw = localStorage.getItem("axia_contacts");
-        return raw ? (JSON.parse(raw) as Contact[]) : [];
-      } catch {
-        return [] as Contact[];
-      }
-    })();
-    const updated = all.map((c) =>
-      c.id === editId
-        ? {
-            ...c,
-            firstName: form.firstName,
-            lastName: form.lastName,
-            title: form.title,
-            email: form.email,
-            phone: form.phone,
-            accountName: form.accountName,
-            updatedAt: new Date().toISOString().split("T")[0],
-          }
-        : c
-    );
-    setContacts(updated);
-    setEditId(null);
-    resetForm();
-    setRefreshKey((k) => k + 1);
-    toast("Contact updated");
+    try {
+      await api.updateContact(editId, toSnake({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        title: form.title,
+        email: form.email,
+        phone: form.phone,
+        accountName: form.accountName,
+      }));
+      setEditId(null);
+      resetForm();
+      await fetchContacts();
+      toast("Contact updated");
+    } catch {
+      toast("Failed to update contact");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    const all = (() => {
-      try {
-        const raw = localStorage.getItem("axia_contacts");
-        return raw ? (JSON.parse(raw) as Contact[]) : [];
-      } catch {
-        return [] as Contact[];
-      }
-    })();
-    setContacts(all.filter((c) => c.id !== id));
-    setRefreshKey((k) => k + 1);
-    toast("Contact deleted");
+  const handleDelete = async (id: string) => {
+    try {
+      await api.deleteContact(id);
+      await fetchContacts();
+      toast("Contact deleted");
+    } catch {
+      toast("Failed to delete contact");
+    }
   };
 
   const columns = [
@@ -261,16 +245,22 @@ export default function ContactsPage() {
 
         {/* Table */}
         <Card>
-          <DataTable
-            columns={columns}
-            data={
-              filtered.map((c) => ({
-                ...c,
-                name: `${c.firstName} ${c.lastName}`,
-              })) as unknown as Record<string, unknown>[]
-            }
-            emptyMessage="No contacts found"
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={
+                filtered.map((c) => ({
+                  ...c,
+                  name: `${c.firstName} ${c.lastName}`,
+                })) as unknown as Record<string, unknown>[]
+              }
+              emptyMessage="No contacts found"
+            />
+          )}
         </Card>
       </div>
 

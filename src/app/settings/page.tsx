@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
+import { api, mapIntegration } from "@/lib/api";
 import {
   Upload,
   Plus,
@@ -19,6 +20,7 @@ import {
   Zap,
   Database,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 
 // ── Toggle Switch ──
@@ -123,38 +125,31 @@ function MicrosoftIcon() {
   );
 }
 
-// ── Mock team data ──
+// ── Static descriptions for integration types ──
 
-const teamMembers = [
-  {
-    id: "1",
-    name: "Demo User",
-    email: "demo@axia.crm",
-    role: "admin",
-    joined: "2025-01-15",
-  },
-  {
-    id: "2",
-    name: "Sarah Chen",
-    email: "sarah@axia.crm",
-    role: "manager",
-    joined: "2025-02-01",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike@axia.crm",
-    role: "rep",
-    joined: "2025-03-10",
-  },
-  {
-    id: "4",
-    name: "Emily Davis",
-    email: "emily@axia.crm",
-    role: "rep",
-    joined: "2025-04-22",
-  },
-];
+const INTEGRATION_DESCRIPTIONS: Record<string, string> = {
+  google: "Sync contacts, calendar, and email with Google.",
+  microsoft: "Connect Outlook, Teams, and OneDrive.",
+  mailgun: "Transactional email delivery and tracking.",
+  "data-intel": "Enrich leads and contacts with external data.",
+};
+
+function getIntegrationDescription(nameOrType: string): string {
+  const key = nameOrType.toLowerCase();
+  for (const [k, desc] of Object.entries(INTEGRATION_DESCRIPTIONS)) {
+    if (key.includes(k)) return desc;
+  }
+  return `Connect with ${nameOrType}.`;
+}
+
+function getIntegrationIcon(nameOrType: string): string {
+  const key = nameOrType.toLowerCase();
+  if (key.includes("google")) return "google";
+  if (key.includes("microsoft") || key.includes("outlook") || key.includes("365")) return "microsoft";
+  if (key.includes("mailgun") || key.includes("mail")) return "mailgun";
+  if (key.includes("data") || key.includes("intel")) return "data-intel";
+  return "default";
+}
 
 // ══════════════════════════════════════════════════════════════
 // Main Settings Page
@@ -170,48 +165,23 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState(
     org?.timezone ?? "America/New_York"
   );
+  const [savingOrg, setSavingOrg] = useState(false);
 
   // ── Team state ──
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("rep");
-  const [members, setMembers] = useState(teamMembers);
+  const [members, setMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
 
   // ── Phone state ──
   const [callerId, setCallerId] = useState(true);
   const [callRecording, setCallRecording] = useState(true);
 
   // ── Integrations state ──
-  const [integrations, setIntegrations] = useState([
-    {
-      id: "google",
-      name: "Google Workspace",
-      description: "Sync contacts, calendar, and email with Google.",
-      connected: true,
-      icon: "google",
-    },
-    {
-      id: "microsoft",
-      name: "Microsoft 365",
-      description: "Connect Outlook, Teams, and OneDrive.",
-      connected: false,
-      icon: "microsoft",
-    },
-    {
-      id: "mailgun",
-      name: "Mailgun",
-      description: "Transactional email delivery and tracking.",
-      connected: true,
-      icon: "mailgun",
-    },
-    {
-      id: "data-intel",
-      name: "Data Intelligence",
-      description: "Enrich leads and contacts with external data.",
-      connected: false,
-      icon: "data-intel",
-    },
-  ]);
+  const [integrations, setIntegrations] = useState<any[]>([]);
+  const [integrationsLoading, setIntegrationsLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const tabs = [
     { id: "general", label: "General" },
@@ -220,6 +190,66 @@ export default function SettingsPage() {
     { id: "integrations", label: "Integrations" },
     { id: "billing", label: "Billing" },
   ];
+
+  // ── Fetch team members ──
+  const fetchMembers = useCallback(async () => {
+    try {
+      setMembersLoading(true);
+      const raw = await api.getOrgUsers();
+      const mapped = (Array.isArray(raw) ? raw : []).map((u: any) => ({
+        id: u.id,
+        name: u.name || u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+        email: u.email,
+        role: u.role || "rep",
+        joined: u.created_at || u.joined || "",
+      }));
+      setMembers(mapped);
+    } catch (err) {
+      console.error("Failed to fetch team members:", err);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, []);
+
+  // ── Fetch integrations ──
+  const fetchIntegrations = useCallback(async () => {
+    try {
+      setIntegrationsLoading(true);
+      const raw = await api.getIntegrations();
+      const mapped = (Array.isArray(raw) ? raw : []).map((r: any) => {
+        const m = mapIntegration(r);
+        return {
+          ...m,
+          description: getIntegrationDescription(m.type || m.name),
+          icon: getIntegrationIcon(m.type || m.name),
+        };
+      });
+      setIntegrations(mapped);
+    } catch (err) {
+      console.error("Failed to fetch integrations:", err);
+    } finally {
+      setIntegrationsLoading(false);
+    }
+  }, []);
+
+  // ── Fetch org details to populate general form ──
+  const fetchOrg = useCallback(async () => {
+    try {
+      const orgData = await api.getOrg();
+      if (orgData) {
+        if (orgData.name) setOrgName(orgData.name);
+        if (orgData.timezone) setTimezone(orgData.timezone);
+      }
+    } catch (err) {
+      console.error("Failed to fetch org details:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchIntegrations();
+    fetchOrg();
+  }, [fetchMembers, fetchIntegrations, fetchOrg]);
 
   if (!user || !org) return null;
 
@@ -238,20 +268,24 @@ export default function SettingsPage() {
     }
   };
 
-  const handleToggleIntegration = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) => {
-        if (i.id === id) {
-          const next = !i.connected;
-          toast(
-            `${i.name} ${next ? "connected" : "disconnected"}`,
-            next ? "success" : "info"
-          );
-          return { ...i, connected: next };
-        }
-        return i;
-      })
-    );
+  const handleToggleIntegration = async (id: string) => {
+    const integ = integrations.find((i) => i.id === id);
+    if (!integ) return;
+    const next = !integ.enabled;
+    try {
+      setTogglingId(id);
+      await api.updateIntegration(id, { enabled: next });
+      toast(
+        `${integ.name} ${next ? "connected" : "disconnected"}`,
+        next ? "success" : "info"
+      );
+      await fetchIntegrations();
+    } catch (err) {
+      console.error("Failed to toggle integration:", err);
+      toast("Failed to update integration", "error");
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleRoleChange = (memberId: string, newRole: string) => {
@@ -259,6 +293,19 @@ export default function SettingsPage() {
       prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
     );
     toast("Role updated", "success");
+  };
+
+  const handleSaveOrg = async () => {
+    try {
+      setSavingOrg(true);
+      await api.updateOrg({ name: orgName, timezone });
+      toast("Settings saved", "success");
+    } catch (err) {
+      console.error("Failed to save org settings:", err);
+      toast("Failed to save settings", "error");
+    } finally {
+      setSavingOrg(false);
+    }
   };
 
   const renderIntegrationIcon = (icon: string) => {
@@ -286,7 +333,14 @@ export default function SettingsPage() {
           </div>
         );
       default:
-        return null;
+        return (
+          <div
+            className="w-5 h-5 flex items-center justify-center"
+            style={{ color: "var(--accent-blue)" }}
+          >
+            <Zap size={20} />
+          </div>
+        );
     }
   };
 
@@ -404,8 +458,12 @@ export default function SettingsPage() {
               <div className="pt-2">
                 <Button
                   variant="primary"
-                  onClick={() => toast("Settings saved", "success")}
+                  onClick={handleSaveOrg}
+                  disabled={savingOrg}
                 >
+                  {savingOrg && (
+                    <Loader2 size={14} className="animate-spin mr-1.5" />
+                  )}
                   Save Changes
                 </Button>
               </div>
@@ -451,62 +509,81 @@ export default function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.map((m) => (
-                      <tr key={m.id}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <Avatar name={m.name} size="sm" />
-                            <span
-                              className="text-[13px] font-medium"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {m.name}
-                            </span>
+                    {membersLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center">
+                          <div className="flex items-center justify-center gap-2" style={{ color: "var(--text-tertiary)" }}>
+                            <Loader2 size={18} className="animate-spin" />
+                            <span className="text-[13px]">Loading team members...</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="text-[13px]"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {m.email}
+                      </tr>
+                    ) : members.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center">
+                          <span className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
+                            No team members found.
                           </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={roleVariant(m.role)}>
-                            {m.role}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="text-[13px] data-value"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {m.joined}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={m.role}
-                            onChange={(e) =>
-                              handleRoleChange(m.id, e.target.value)
-                            }
-                            className="text-[12px] px-2 py-1"
-                            style={{
-                              backgroundColor: "var(--bg-quaternary)",
-                              border: "1px solid var(--border-primary)",
-                              borderRadius: "var(--radius-sm)",
-                              color: "var(--text-primary)",
-                            }}
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="rep">Rep</option>
-                            <option value="viewer">Viewer</option>
-                          </select>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      members.map((m) => (
+                        <tr key={m.id}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={m.name} size="sm" />
+                              <span
+                                className="text-[13px] font-medium"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {m.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="text-[13px]"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {m.email}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={roleVariant(m.role)}>
+                              {m.role}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="text-[13px] data-value"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {m.joined}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={m.role}
+                              onChange={(e) =>
+                                handleRoleChange(m.id, e.target.value)
+                              }
+                              className="text-[12px] px-2 py-1"
+                              style={{
+                                backgroundColor: "var(--bg-quaternary)",
+                                border: "1px solid var(--border-primary)",
+                                borderRadius: "var(--radius-sm)",
+                                color: "var(--text-primary)",
+                              }}
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="manager">Manager</option>
+                              <option value="rep">Rep</option>
+                              <option value="viewer">Viewer</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -725,59 +802,78 @@ export default function SettingsPage() {
         {/* ──────────────────────── INTEGRATIONS ──────────────────────── */}
         {activeTab === "integrations" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {integrations.map((integ) => (
-              <Card key={integ.id}>
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-10 h-10 flex items-center justify-center shrink-0"
-                      style={{
-                        backgroundColor: "var(--bg-tertiary)",
-                        borderRadius: "var(--radius-md)",
-                      }}
-                    >
-                      {renderIntegrationIcon(integ.icon)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+            {integrationsLoading ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <div className="flex items-center gap-2" style={{ color: "var(--text-tertiary)" }}>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="text-[13px]">Loading integrations...</span>
+                </div>
+              </div>
+            ) : integrations.length === 0 ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <span className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
+                  No integrations available.
+                </span>
+              </div>
+            ) : (
+              integrations.map((integ) => (
+                <Card key={integ.id}>
+                  <CardContent className="py-4">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-10 h-10 flex items-center justify-center shrink-0"
+                        style={{
+                          backgroundColor: "var(--bg-tertiary)",
+                          borderRadius: "var(--radius-md)",
+                        }}
+                      >
+                        {renderIntegrationIcon(integ.icon)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p
+                            className="text-[14px] font-semibold"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {integ.name}
+                          </p>
+                          <Badge
+                            variant={
+                              integ.enabled ? "success" : "neutral"
+                            }
+                          >
+                            {integ.enabled
+                              ? "Connected"
+                              : "Disconnected"}
+                          </Badge>
+                        </div>
                         <p
-                          className="text-[14px] font-semibold"
-                          style={{ color: "var(--text-primary)" }}
+                          className="text-[12px] mb-3"
+                          style={{ color: "var(--text-secondary)" }}
                         >
-                          {integ.name}
+                          {integ.description}
                         </p>
-                        <Badge
+                        <Button
                           variant={
-                            integ.connected ? "success" : "neutral"
+                            integ.enabled ? "secondary" : "primary"
+                          }
+                          size="sm"
+                          disabled={togglingId === integ.id}
+                          onClick={() =>
+                            handleToggleIntegration(integ.id)
                           }
                         >
-                          {integ.connected
-                            ? "Connected"
-                            : "Disconnected"}
-                        </Badge>
+                          {togglingId === integ.id && (
+                            <Loader2 size={12} className="animate-spin mr-1" />
+                          )}
+                          {integ.enabled ? "Disconnect" : "Connect"}
+                        </Button>
                       </div>
-                      <p
-                        className="text-[12px] mb-3"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {integ.description}
-                      </p>
-                      <Button
-                        variant={
-                          integ.connected ? "secondary" : "primary"
-                        }
-                        size="sm"
-                        onClick={() =>
-                          handleToggleIntegration(integ.id)
-                        }
-                      >
-                        {integ.connected ? "Disconnect" : "Connect"}
-                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         )}
 
