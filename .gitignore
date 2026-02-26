@@ -2,6 +2,9 @@ node_modules
 .next
 out
 .vercel
+.wrangler
 api-worker/node_modules
+api-worker/.wrangler
 *.md
 !README.md
+tsconfig.tsbuildinfo
