@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card } from "@/components/ui/card";
@@ -11,35 +11,23 @@ import { Search } from "@/components/ui/search";
 import { Modal } from "@/components/ui/modal";
 import { Input, Select } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { generateId, formatCurrency } from "@/lib/utils";
+import { api, mapProduct, toSnake } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import type { CatalogProduct } from "@/lib/types";
-import { Plus, Pencil, Trash2, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
 
-/* ── Default catalog products ── */
+/* ── Map API Product → CatalogProduct ── */
 
-const defaultProducts: CatalogProduct[] = [
-  { id: "cp1", name: "Cybersecurity Assessment", sku: "CYBER-001", category: "Security", price: 5000, status: "Active", orgId: "org1" },
-  { id: "cp2", name: "Managed IT Support", sku: "MIT-001", category: "Services", price: 2000, status: "Active", orgId: "org1" },
-  { id: "cp3", name: "Pentest Package", sku: "PEN-001", category: "Security", price: 8000, status: "Active", orgId: "org1" },
-  { id: "cp4", name: "24/7 Monitoring", sku: "MON-001", category: "Services", price: 3000, status: "Active", orgId: "org1" },
-  { id: "cp5", name: "Compliance Audit", sku: "COMP-001", category: "Compliance", price: 12000, status: "Inactive", orgId: "org1" },
-];
-
-/* ── localStorage helpers ── */
-
-function getStoredProducts(): CatalogProduct[] {
-  if (typeof window === "undefined") return defaultProducts;
-  try {
-    const raw = localStorage.getItem("axia_catalog_products");
-    return raw ? JSON.parse(raw) : defaultProducts;
-  } catch {
-    return defaultProducts;
-  }
-}
-
-function setStoredProducts(products: CatalogProduct[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("axia_catalog_products", JSON.stringify(products));
+function toCatalogProduct(p: ReturnType<typeof mapProduct>): CatalogProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    sku: p.code || "",
+    category: p.family || "",
+    price: p.price || 0,
+    status: p.isActive ? "Active" : "Inactive",
+    orgId: p.orgId,
+  };
 }
 
 /* ── Component ── */
@@ -48,6 +36,7 @@ export default function ProductsPage() {
   const { org } = useAuth();
   const { toast } = useToast();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -59,46 +48,54 @@ export default function ProductsPage() {
     status: "Active" as CatalogProduct["status"],
   });
 
-  useEffect(() => {
-    setProducts(getStoredProducts());
-  }, []);
+  const fetchProducts = useCallback(async () => {
+    if (!org) return;
+    try {
+      const raw = await api.getProducts();
+      setProducts(raw.map((r: any) => toCatalogProduct(mapProduct(r))));
+    } catch {
+      toast("Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  }, [org]);
 
-  const saveProducts = (updated: CatalogProduct[]) => {
-    setProducts(updated);
-    setStoredProducts(updated);
-  };
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const filtered = useMemo(() => {
-    if (!org) return [];
-    const orgProducts = products.filter((p) => p.orgId === org.id);
-    if (!search) return orgProducts;
+    if (!search) return products;
     const s = search.toLowerCase();
-    return orgProducts.filter(
+    return products.filter(
       (p) =>
         p.name.toLowerCase().includes(s) ||
         p.sku.toLowerCase().includes(s) ||
         p.category.toLowerCase().includes(s)
     );
-  }, [products, search, org]);
+  }, [products, search]);
 
   const resetForm = () =>
     setForm({ name: "", sku: "", category: "", price: "", status: "Active" });
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name.trim() || !org) return;
-    const newProduct: CatalogProduct = {
-      id: generateId(),
-      name: form.name,
-      sku: form.sku,
-      category: form.category,
-      price: Number(form.price) || 0,
-      status: form.status,
-      orgId: org.id,
-    };
-    saveProducts([...products, newProduct]);
-    setShowAdd(false);
-    resetForm();
-    toast("Product added successfully");
+    try {
+      await api.createProduct(toSnake({
+        name: form.name,
+        code: form.sku,
+        family: form.category,
+        price: Number(form.price) || 0,
+        isActive: form.status === "Active",
+        orgId: org.id,
+      }));
+      setShowAdd(false);
+      resetForm();
+      await fetchProducts();
+      toast("Product added successfully");
+    } catch {
+      toast("Failed to add product");
+    }
   };
 
   const handleEdit = (product: CatalogProduct) => {
@@ -112,29 +109,33 @@ export default function ProductsPage() {
     });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editId) return;
-    const updated = products.map((p) =>
-      p.id === editId
-        ? {
-            ...p,
-            name: form.name,
-            sku: form.sku,
-            category: form.category,
-            price: Number(form.price) || 0,
-            status: form.status,
-          }
-        : p
-    );
-    saveProducts(updated);
-    setEditId(null);
-    resetForm();
-    toast("Product updated");
+    try {
+      await api.updateProduct(editId, toSnake({
+        name: form.name,
+        code: form.sku,
+        family: form.category,
+        price: Number(form.price) || 0,
+        isActive: form.status === "Active",
+      }));
+      setEditId(null);
+      resetForm();
+      await fetchProducts();
+      toast("Product updated");
+    } catch {
+      toast("Failed to update product");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    saveProducts(products.filter((p) => p.id !== id));
-    toast("Product deleted");
+  const handleDelete = async (id: string) => {
+    try {
+      await api.deleteProduct(id);
+      await fetchProducts();
+      toast("Product deleted");
+    } catch {
+      toast("Failed to delete product");
+    }
   };
 
   const statusVariant: Record<string, "success" | "neutral"> = {
@@ -261,11 +262,17 @@ export default function ProductsPage() {
 
         {/* Table */}
         <Card>
-          <DataTable
-            columns={columns}
-            data={filtered as unknown as Record<string, unknown>[]}
-            emptyMessage="No products found"
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={filtered as unknown as Record<string, unknown>[]}
+              emptyMessage="No products found"
+            />
+          )}
         </Card>
       </div>
 

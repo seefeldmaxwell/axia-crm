@@ -43,20 +43,24 @@ export default function CasesPage() {
 
   const handleCreate = async () => {
     if (!org) return;
-    await createCase.mutate({
-      subject: form.subject,
-      status: form.status,
-      priority: form.priority,
-      description: form.description,
-      ownerId: "1",
-      ownerName: "Demo User",
-      orgId: org.id,
-      createdAt: new Date().toISOString().split("T")[0],
-    });
-    setShowNew(false);
-    setForm({ subject: "", priority: "Medium", status: "New", description: "" });
-    refetch();
-    toast("Case created successfully");
+    try {
+      await createCase.mutate({
+        subject: form.subject,
+        status: form.status,
+        priority: form.priority,
+        description: form.description,
+        ownerId: "1",
+        ownerName: "Demo User",
+        orgId: org.id,
+        createdAt: new Date().toISOString().split("T")[0],
+      });
+      setShowNew(false);
+      setForm({ subject: "", priority: "Medium", status: "New", description: "" });
+      refetch();
+      toast("Case created successfully");
+    } catch {
+      toast("Failed to create case");
+    }
   };
 
   const priorityVariant = (p: string) => {
@@ -125,6 +129,7 @@ export default function CasesPage() {
             columns={columns}
             data={filtered as unknown as Record<string, unknown>[]}
             onRowClick={(item) => router.push(`/cases/${(item as unknown as Case).id}`)}
+            emptyMessage="No cases found"
           />
         </Card>
       </div>

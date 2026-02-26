@@ -31,6 +31,7 @@ import {
   Users,
   CheckSquare,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 const TYPE_COLORS: Record<ActivityType, string> = {
@@ -79,6 +80,7 @@ export default function CalendarPage() {
       setActivitiesState(raw.map(mapActivity) as Activity[]);
     } catch (err) {
       console.error("Failed to fetch activities:", err);
+      toast("Failed to load activities");
     } finally {
       setLoading(false);
     }
@@ -159,6 +161,16 @@ export default function CalendarPage() {
   };
 
   if (!org) return null;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -17,9 +17,17 @@ function getHeaders(): Record<string, string> {
   }
 }
 
+function handleAuthError(res: Response): void {
+  if ((res.status === 401 || res.status === 403) && typeof window !== "undefined") {
+    localStorage.removeItem("axia_user");
+    localStorage.removeItem("axia_org");
+    window.location.href = "/";
+  }
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: getHeaders() });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) { handleAuthError(res); throw new Error(`API error: ${res.status}`); }
   return res.json();
 }
 
@@ -29,7 +37,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) { handleAuthError(res); throw new Error(`API error: ${res.status}`); }
   return res.json();
 }
 
@@ -39,7 +47,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) { handleAuthError(res); throw new Error(`API error: ${res.status}`); }
   return res.json();
 }
 
@@ -48,7 +56,7 @@ export async function apiDelete(path: string): Promise<void> {
     method: "DELETE",
     headers: getHeaders(),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) { handleAuthError(res); throw new Error(`API error: ${res.status}`); }
 }
 
 // ─── Convenience API object ───

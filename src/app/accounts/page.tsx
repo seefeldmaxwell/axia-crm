@@ -130,6 +130,7 @@ export default function AccountsPage() {
             columns={columns}
             data={filtered as unknown as Record<string, unknown>[]}
             onRowClick={(item) => router.push(`/accounts/${(item as unknown as Account).id}`)}
+            emptyMessage="No accounts found"
           />
         </Card>
       </div>

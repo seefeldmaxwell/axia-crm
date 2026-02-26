@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/input";
 import { useDeals, useLeads, useActivities } from "@/hooks/use-data";
 import { formatCurrency } from "@/lib/utils";
 import type { DealStage } from "@/lib/types";
+import { Loader2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -180,7 +181,7 @@ export default function ReportsPage() {
     return (
       <DashboardLayout>
         <div className="p-6 flex items-center justify-center h-64">
-          <p style={{ color: "var(--text-secondary)" }}>Loading...</p>
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
         </div>
       </DashboardLayout>
     );

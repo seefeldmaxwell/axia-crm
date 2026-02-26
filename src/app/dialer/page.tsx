@@ -131,6 +131,7 @@ export default function DialerPage() {
         setCallRecordsState(rawRecords.map(mapCallRecord));
       } catch (err) {
         console.error("Failed to load dialer data:", err);
+        toast("Failed to load dialer data");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -265,6 +266,7 @@ export default function DialerPage() {
         setCallRecordsState(rawRecords.map(mapCallRecord));
       } catch (err) {
         console.error("Failed to save call record:", err);
+        toast("Failed to save call record");
       }
 
       setCalledIds((prev) => new Set(prev).add(lead.id));
