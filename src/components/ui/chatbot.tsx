@@ -1,0 +1,221 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+export function ChatBot() {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "Hi! I'm Axia AI. I can help you navigate the CRM, find records, create tasks, or answer questions. What do you need?",
+      timestamp: new Date(),
+    },
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsTyping(true);
+
+    // Simulate AI response (replace with real API call later)
+    setTimeout(() => {
+      const responses = [
+        "I can help with that! Let me look into it.",
+        "You can find that in the sidebar under Sales → Leads.",
+        "Would you like me to create a new record for that?",
+        "I've noted that. Is there anything else you need?",
+        "Try checking the Activities board — it should be under Active items.",
+        "I can pull up those numbers. Give me a moment.",
+      ];
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: responses[Math.floor(Math.random() * responses.length)],
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+      setIsTyping(false);
+    }, 800 + Math.random() * 1200);
+  };
+
+  return (
+    <>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-12 h-12 transition-all duration-200"
+        style={{
+          background: open ? "var(--accent-red)" : "var(--accent-blue)",
+          borderRadius: "50%",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+          color: "#fff",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.08)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+      >
+        {open ? <X size={20} /> : <MessageCircle size={20} />}
+      </button>
+
+      {/* Chat Panel */}
+      {open && (
+        <div
+          className="fixed bottom-20 right-6 z-50 flex flex-col overflow-hidden"
+          style={{
+            width: "380px",
+            height: "520px",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-primary)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center gap-3 px-4 py-3 shrink-0"
+            style={{
+              background: "var(--bg-tertiary)",
+              borderBottom: "1px solid var(--border-primary)",
+            }}
+          >
+            <div
+              className="w-8 h-8 flex items-center justify-center"
+              style={{
+                background: "var(--accent-blue)",
+                borderRadius: "50%",
+              }}
+            >
+              <Bot size={16} color="#fff" />
+            </div>
+            <div>
+              <div className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                Axia AI
+              </div>
+              <div
+                className="flex items-center gap-1"
+                style={{ fontSize: "10px", color: "var(--accent-green)", fontFamily: "var(--font-mono)" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent-green)" }} />
+                ONLINE
+              </div>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div
+                    className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: "var(--accent-blue-muted)", borderRadius: "50%" }}
+                  >
+                    <Bot size={12} style={{ color: "var(--accent-blue)" }} />
+                  </div>
+                )}
+                <div
+                  className="max-w-[75%] px-3 py-2 text-[13px] leading-relaxed"
+                  style={{
+                    borderRadius: msg.role === "user" ? "var(--radius-md) var(--radius-md) 2px var(--radius-md)" : "var(--radius-md) var(--radius-md) var(--radius-md) 2px",
+                    background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-tertiary)",
+                    color: msg.role === "user" ? "#fff" : "var(--text-primary)",
+                  }}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === "user" && (
+                  <div
+                    className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: "var(--accent-purple)", borderRadius: "50%", opacity: 0.7 }}
+                  >
+                    <User size={12} color="#fff" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex gap-2">
+                <div
+                  className="w-6 h-6 flex items-center justify-center shrink-0"
+                  style={{ background: "var(--accent-blue-muted)", borderRadius: "50%" }}
+                >
+                  <Bot size={12} style={{ color: "var(--accent-blue)" }} />
+                </div>
+                <div
+                  className="px-3 py-2 text-[13px]"
+                  style={{ background: "var(--bg-tertiary)", borderRadius: "var(--radius-md)", color: "var(--text-tertiary)" }}
+                >
+                  <span className="animate-pulse">Typing...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div
+            className="flex items-center gap-2 px-3 py-3 shrink-0"
+            style={{ borderTop: "1px solid var(--border-primary)", background: "var(--bg-tertiary)" }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              placeholder="Ask Axia AI..."
+              className="flex-1 px-3 py-2 text-[13px] outline-none"
+              style={{
+                background: "var(--bg-quaternary)",
+                border: "1px solid var(--border-primary)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-primary)",
+              }}
+            />
+            <button
+              onClick={handleSend}
+              className="w-8 h-8 flex items-center justify-center shrink-0 transition-colors"
+              style={{
+                background: input.trim() ? "var(--accent-blue)" : "var(--bg-quaternary)",
+                borderRadius: "var(--radius-sm)",
+                color: input.trim() ? "#fff" : "var(--text-tertiary)",
+              }}
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

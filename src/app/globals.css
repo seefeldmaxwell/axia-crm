@@ -1,1 +1,399 @@
 @import "tailwindcss";
+
+/*
+ * AXIA CRM — Palantir UI + Azure Boards Design System
+ * Primary: Palantir Foundry/Gotham aesthetic (military-grade data platform)
+ * Secondary: Azure DevOps Boards (Deals + Activities only)
+ * Supports dark (default) and light modes via [data-theme]
+ */
+
+/* ── CSS Variables: Dark Mode (Default — Palantir is dark-first) ── */
+
+:root {
+  --bg-primary: #0D0E12;
+  --bg-secondary: #151720;
+  --bg-tertiary: #1C1E2A;
+  --bg-quaternary: #232636;
+
+  --text-primary: #E8EAED;
+  --text-secondary: #9BA1B0;
+  --text-tertiary: #5C6378;
+  --text-inverse: #0D0E12;
+
+  --accent-blue: #2D7FF9;
+  --accent-blue-hover: #1A6FE8;
+  --accent-blue-muted: rgba(45, 127, 249, 0.15);
+  --accent-green: #36B37E;
+  --accent-green-muted: rgba(54, 179, 126, 0.15);
+  --accent-red: #FF5630;
+  --accent-red-muted: rgba(255, 86, 48, 0.15);
+  --accent-yellow: #FFAB00;
+  --accent-yellow-muted: rgba(255, 171, 0, 0.15);
+  --accent-purple: #6554C0;
+  --accent-teal: #00B8D9;
+
+  --border-primary: #2A2D3A;
+  --border-secondary: #1E2030;
+  --border-focus: #2D7FF9;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.5);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --transition: 150ms ease;
+}
+
+/* ── Light Mode ── */
+
+[data-theme="light"] {
+  --bg-primary: #F7F8FA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0F1F4;
+  --bg-quaternary: #E8E9EE;
+
+  --text-primary: #1A1C23;
+  --text-secondary: #5C6378;
+  --text-tertiary: #9BA1B0;
+  --text-inverse: #FFFFFF;
+
+  --border-primary: #E0E2E9;
+  --border-secondary: #ECEDF2;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.12);
+}
+
+/* ── Azure Boards Scoped Colors (Deals + Activities ONLY) ── */
+
+.azure-board {
+  --ab-bg: #F8F8F8;
+  --ab-card: #FFFFFF;
+  --ab-card-hover: #F4F4F4;
+  --ab-header: #F0F0F0;
+  --ab-text: #323130;
+  --ab-text-secondary: #605E5C;
+  --ab-border: #EDEBE9;
+  --ab-blue: #0078D4;
+  --ab-green: #107C10;
+  --ab-red: #A4262C;
+  --ab-yellow: #FFB900;
+  --ab-purple: #8764B8;
+}
+
+[data-theme="dark"] .azure-board {
+  --ab-bg: #1B1A19;
+  --ab-card: #252423;
+  --ab-card-hover: #2D2C2B;
+  --ab-header: #292827;
+  --ab-text: #F3F2F1;
+  --ab-text-secondary: #A19F9D;
+  --ab-border: #323130;
+}
+
+/* ── Tailwind v4 Theme Tokens ── */
+
+@theme {
+  --color-p-bg: var(--bg-primary);
+  --color-p-surface: var(--bg-secondary);
+  --color-p-elevated: var(--bg-tertiary);
+  --color-p-well: var(--bg-quaternary);
+  --color-p-text: var(--text-primary);
+  --color-p-text-secondary: var(--text-secondary);
+  --color-p-text-tertiary: var(--text-tertiary);
+  --color-p-text-inverse: var(--text-inverse);
+  --color-p-accent: var(--accent-blue);
+  --color-p-accent-hover: var(--accent-blue-hover);
+  --color-p-accent-muted: var(--accent-blue-muted);
+  --color-p-success: var(--accent-green);
+  --color-p-success-muted: var(--accent-green-muted);
+  --color-p-error: var(--accent-red);
+  --color-p-error-muted: var(--accent-red-muted);
+  --color-p-warning: var(--accent-yellow);
+  --color-p-warning-muted: var(--accent-yellow-muted);
+  --color-p-purple: var(--accent-purple);
+  --color-p-teal: var(--accent-teal);
+  --color-p-border: var(--border-primary);
+  --color-p-border-secondary: var(--border-secondary);
+}
+
+/* ── Typography ── */
+
+body {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }
+h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+h3 { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+
+p { max-width: 65ch; }
+
+/* Data labels: ALWAYS monospace, uppercase, tiny */
+.data-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Data values: monospace for numbers */
+.data-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* ── Scrollbars ── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+
+[data-theme="light"] * {
+  scrollbar-color: rgba(0,0,0,.15) transparent;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); }
+
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+
+/* ── Selection ── */
+
+::selection {
+  background: rgba(45, 127, 249, 0.3);
+}
+
+/* ── Focus ── */
+
+*:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+*:focus:not(:focus-visible) { outline: none; }
+
+/* ── Motion ── */
+
+button, a, [role="button"] {
+  transition: background-color var(--transition),
+              color var(--transition),
+              border-color var(--transition),
+              opacity var(--transition);
+}
+
+input, textarea, select {
+  transition: border-color var(--transition);
+}
+
+/* ── Tables ── */
+
+th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  text-align: left;
+}
+
+td {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border-secondary);
+  transition: background-color 100ms ease;
+}
+
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background-color: var(--bg-tertiary); }
+
+/* ── Inputs ── */
+
+input, textarea, select {
+  font-size: 13px;
+  font-family: inherit;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ── Kanban cards ── */
+
+.kanban-card {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  transition: box-shadow 200ms cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.kanban-card:hover { box-shadow: var(--shadow-sm); }
+.kanban-card.dragging { box-shadow: var(--shadow-lg); }
+
+/* ── Modal backdrop ── */
+
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Number formatting ── */
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ── Empty states ── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state svg {
+  opacity: 0.15;
+  margin-bottom: 1rem;
+}
+
+/* ── Dividers ── */
+
+hr {
+  border: none;
+  height: 1px;
+  background: var(--border-primary);
+  margin: 0;
+}
+
+/* ── Section headers ── */
+
+.caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── Skeleton loading ── */
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.06; }
+  50% { opacity: 0.12; }
+}
+
+.skeleton {
+  background: var(--text-primary);
+  border-radius: var(--radius-sm);
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* ── Theme toggle ── */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+/* ── Animated dot grid for landing page ── */
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.08; }
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, var(--text-tertiary) 1px, transparent 1px);
+  background-size: 24px 24px;
+  animation: gridPulse 8s ease-in-out infinite;
+}
+
+/* ── Metric glow (dark mode) ── */
+
+[data-theme="dark"] .metric-glow {
+  text-shadow: 0 0 20px rgba(45, 127, 249, 0.3);
+}
+
+/* ── Status dots ── */
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Azure Board specific styles ── */
+
+.azure-board .ab-card {
+  background: var(--ab-card);
+  border: 1px solid var(--ab-border);
+  border-radius: 2px;
+  transition: box-shadow 200ms ease, background-color 200ms ease;
+}
+
+.azure-board .ab-card:hover {
+  background: var(--ab-card-hover);
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+.azure-board .ab-card.dragging {
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+}

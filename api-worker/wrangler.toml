@@ -1,0 +1,8 @@
+name = "axia-crm-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "axia-crm-db"
+database_id = "5a5b1fc2-5ec3-445f-80ef-29cbb930b5d1"

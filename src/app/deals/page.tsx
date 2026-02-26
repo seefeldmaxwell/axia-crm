@@ -1,0 +1,324 @@
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
+import { Input, Select } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
+import { useToast } from "@/components/ui/toast";
+import { getDeals, setDeals } from "@/lib/store";
+import { Deal, DealStage } from "@/lib/types";
+import { formatCurrency, generateId } from "@/lib/utils";
+import {
+  DragDropContext, Droppable, Draggable, DropResult,
+} from "@hello-pangea/dnd";
+import {
+  Plus, Filter, Settings2, Star, ChevronDown, LayoutGrid, BarChart3, List,
+} from "lucide-react";
+
+const STAGES: { id: DealStage; label: string; color: string; wipLimit: number }[] = [
+  { id: "Prospecting", label: "Prospecting", color: "#605E5C", wipLimit: 10 },
+  { id: "Qualification", label: "Qualification", color: "#0078D4", wipLimit: 10 },
+  { id: "Proposal", label: "Proposal", color: "#FFB900", wipLimit: 10 },
+  { id: "Negotiation", label: "Negotiation", color: "#FFB900", wipLimit: 10 },
+  { id: "Closed Won", label: "Closed Won", color: "#107C10", wipLimit: 10 },
+  { id: "Closed Lost", label: "Closed Lost", color: "#A4262C", wipLimit: 10 },
+];
+
+function pseudoId(dealId: string): string {
+  let hash = 0;
+  for (let i = 0; i < dealId.length; i++) {
+    hash = (hash * 31 + dealId.charCodeAt(i)) & 0x7fffff;
+  }
+  return String(100000 + (hash % 900000));
+}
+
+export default function DealsPage() {
+  const { user, org } = useAuth();
+  const { toast } = useToast();
+  const [deals, setDealsLocal] = useState<Deal[]>([]);
+  const [activeTab, setActiveTab] = useState<"board" | "analytics" | "backlog">("board");
+  const [showNew, setShowNew] = useState(false);
+  const [newStage, setNewStage] = useState<DealStage>("Prospecting");
+
+  const [form, setForm] = useState({
+    name: "", amount: "", stage: "Prospecting" as DealStage,
+    closeDate: "", accountName: "",
+  });
+
+  useEffect(() => {
+    if (org) setDealsLocal(getDeals(org.id));
+  }, [org]);
+
+  const columnItems = useMemo(() => {
+    const groups: Record<string, Deal[]> = {};
+    STAGES.forEach((s) => { groups[s.id] = []; });
+    deals.forEach((d) => {
+      if (groups[d.stage]) groups[d.stage].push(d);
+    });
+    return groups;
+  }, [deals]);
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !org) return;
+    const destStage = result.destination.droppableId as DealStage;
+    const dealId = result.draggableId;
+    const allDeals = getDeals(org.id);
+    const allRaw = JSON.parse(localStorage.getItem("axia_deals") || "[]") as Deal[];
+    const updated = allRaw.map((d) =>
+      d.id === dealId ? { ...d, stage: destStage, probability: destStage === "Closed Won" ? 100 : destStage === "Closed Lost" ? 0 : d.probability, updatedAt: new Date().toISOString().split("T")[0] } : d
+    );
+    setDeals(updated);
+    setDealsLocal(updated.filter((d) => d.orgId === org.id));
+    toast(`Deal moved to ${destStage}`);
+  };
+
+  const handleCreate = () => {
+    if (!org || !form.name) return;
+    const newDeal: Deal = {
+      id: generateId(),
+      name: form.name,
+      amount: Number(form.amount) || 0,
+      stage: form.stage,
+      closeDate: form.closeDate || new Date().toISOString().split("T")[0],
+      accountId: "",
+      accountName: form.accountName,
+      probability: 50,
+      ownerId: user?.id || "1",
+      ownerName: user?.name || "Demo User",
+      orgId: org.id,
+      createdAt: new Date().toISOString().split("T")[0],
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
+    const allRaw = JSON.parse(localStorage.getItem("axia_deals") || "[]") as Deal[];
+    const updated = [...allRaw, newDeal];
+    setDeals(updated);
+    setDealsLocal(updated.filter((d) => d.orgId === org.id));
+    setShowNew(false);
+    setForm({ name: "", amount: "", stage: "Prospecting", closeDate: "", accountName: "" });
+    toast("Deal created");
+  };
+
+  if (!org) return null;
+
+  return (
+    <DashboardLayout>
+      <div className="azure-board flex flex-col h-full" style={{ background: "var(--ab-bg)", color: "var(--ab-text)" }}>
+        {/* Top bar */}
+        <div className="px-4 py-2" style={{ borderBottom: "1px solid var(--ab-border)" }}>
+          <div className="flex items-center gap-2 text-[12px] mb-2" style={{ color: "var(--ab-text-secondary)" }}>
+            <span>Axia</span>
+            <span>/</span>
+            <span>{org.name}</span>
+            <span>/</span>
+            <span>Boards</span>
+            <span>/</span>
+            <span style={{ color: "var(--ab-text)", fontWeight: 600 }}>Deal Registration</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[14px] font-semibold" style={{ color: "var(--ab-text)" }}>{org.name} Team</span>
+                <ChevronDown size={14} style={{ color: "var(--ab-text-secondary)" }} />
+                <Star size={14} style={{ color: "var(--ab-text-secondary)" }} />
+              </div>
+
+              <div className="flex items-center" style={{ borderBottom: "2px solid transparent" }}>
+                <button
+                  onClick={() => setActiveTab("board")}
+                  className="px-3 py-1.5 text-[13px] font-medium relative"
+                  style={{ color: activeTab === "board" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
+                >
+                  <LayoutGrid size={14} className="inline mr-1.5" />
+                  Board
+                  {activeTab === "board" && <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "var(--ab-blue)" }} />}
+                </button>
+                <button
+                  onClick={() => setActiveTab("analytics")}
+                  className="px-3 py-1.5 text-[13px] font-medium"
+                  style={{ color: activeTab === "analytics" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
+                >
+                  <BarChart3 size={14} className="inline mr-1.5" />
+                  Analytics
+                </button>
+                <button
+                  onClick={() => setActiveTab("backlog")}
+                  className="px-3 py-1.5 text-[13px] font-medium"
+                  style={{ color: activeTab === "backlog" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
+                >
+                  <List size={14} className="inline mr-1.5" />
+                  View as Backlog
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="p-1.5" style={{ color: "var(--ab-text-secondary)" }}><Filter size={16} /></button>
+              <button className="p-1.5" style={{ color: "var(--ab-text-secondary)" }}><Settings2 size={16} /></button>
+            </div>
+          </div>
+        </div>
+
+        {/* Board content */}
+        <div className="flex-1 overflow-x-auto p-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-2 min-h-[500px]">
+              {STAGES.map((stage) => {
+                const items = columnItems[stage.id] || [];
+                const overWip = items.length >= stage.wipLimit;
+                return (
+                  <div key={stage.id} className="flex-shrink-0 w-[280px] flex flex-col">
+                    {/* Column header */}
+                    <div className="mb-1" style={{ borderTop: `2px solid ${stage.color}` }}>
+                      <div className="flex items-center justify-between px-2 py-2" style={{ background: "var(--ab-header)" }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold" style={{ color: "var(--ab-text)" }}>{stage.label}</span>
+                          <span
+                            className="text-[11px] px-1.5 py-0.5"
+                            style={{
+                              background: "var(--ab-border)",
+                              borderRadius: "2px",
+                              color: overWip ? "var(--ab-red)" : "var(--ab-text-secondary)",
+                              fontWeight: overWip ? 700 : 400,
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            {items.length}/{stage.wipLimit}
+                          </span>
+                        </div>
+                        {stage.id === "Prospecting" && (
+                          <button
+                            onClick={() => { setNewStage("Prospecting"); setForm({ ...form, stage: "Prospecting" }); setShowNew(true); }}
+                            className="p-0.5"
+                            style={{ color: "var(--ab-blue)" }}
+                          >
+                            <Plus size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cards */}
+                    <Droppable droppableId={stage.id}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="flex-1 p-1 space-y-1.5 transition-colors"
+                          style={{
+                            minHeight: 100,
+                            background: snapshot.isDraggingOver ? "rgba(0,120,212,0.06)" : "transparent",
+                          }}
+                        >
+                          {items.map((deal, index) => (
+                            <Draggable key={deal.id} draggableId={deal.id} index={index}>
+                              {(dragProvided, dragSnapshot) => (
+                                <div
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  {...dragProvided.dragHandleProps}
+                                  className="ab-card cursor-grab active:cursor-grabbing"
+                                  style={{
+                                    ...dragProvided.draggableProps.style,
+                                    background: "var(--ab-card)",
+                                    border: "1px solid var(--ab-border)",
+                                    borderLeft: `3px solid ${stage.color}`,
+                                    borderRadius: "2px",
+                                    boxShadow: dragSnapshot.isDragging ? "0 6px 20px rgba(0,0,0,.3)" : "none",
+                                  }}
+                                >
+                                  <div className="p-3">
+                                    {/* ID + Title */}
+                                    <div className="flex items-start gap-1.5 mb-2">
+                                      <span className="text-[11px] font-bold" style={{ color: "var(--ab-blue)", fontFamily: "var(--font-mono)" }}>
+                                        #{pseudoId(deal.id)}
+                                      </span>
+                                      <span className="text-[13px] font-medium leading-tight" style={{ color: "var(--ab-text)" }}>
+                                        {deal.name}
+                                      </span>
+                                    </div>
+
+                                    {/* Customer */}
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                      <Avatar name={deal.accountName} size="sm" />
+                                      <span className="text-[12px]" style={{ color: "var(--ab-text-secondary)" }}>{deal.accountName}</span>
+                                    </div>
+
+                                    {/* Value */}
+                                    <div className="text-[12px] mb-1" style={{ fontFamily: "var(--font-mono)", color: "var(--ab-text)" }}>
+                                      Value: {formatCurrency(deal.amount)}
+                                    </div>
+
+                                    {/* Close Date */}
+                                    <div className="text-[11px] mb-1" style={{ color: "var(--ab-text-secondary)" }}>
+                                      Close Date: {deal.closeDate}
+                                    </div>
+
+                                    {/* Priority */}
+                                    <div className="flex items-center gap-1 text-[11px] mb-2" style={{ color: "var(--ab-text-secondary)" }}>
+                                      Priority:
+                                      <span
+                                        className="status-dot"
+                                        style={{
+                                          background: deal.probability >= 70 ? "var(--ab-green)" : deal.probability >= 40 ? "var(--ab-yellow)" : "var(--ab-red)",
+                                        }}
+                                      />
+                                      <span>{deal.probability >= 70 ? "High" : deal.probability >= 40 ? "Medium" : "Low"}</span>
+                                    </div>
+
+                                    {/* Tags */}
+                                    <div className="flex flex-wrap gap-1">
+                                      {deal.accountName && (
+                                        <span className="text-[10px] px-1.5 py-[1px]" style={{ background: "rgba(0,120,212,0.15)", color: "var(--ab-blue)", borderRadius: "2px" }}>
+                                          {deal.accountName.split(" ")[0]}
+                                        </span>
+                                      )}
+                                      {deal.probability >= 80 && (
+                                        <span className="text-[10px] px-1.5 py-[1px]" style={{ background: "rgba(16,124,16,0.15)", color: "var(--ab-green)", borderRadius: "2px" }}>
+                                          High Value
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        </div>
+      </div>
+
+      {/* New Deal Modal */}
+      <Modal open={showNew} onClose={() => setShowNew(false)} title="New Deal" size="sm">
+        <div className="space-y-4">
+          <Input label="Deal Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter deal name" />
+          <Input label="Customer" value={form.accountName} onChange={(e) => setForm({ ...form, accountName: e.target.value })} placeholder="Account name" />
+          <Input label="Value" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0" />
+          <Select
+            label="Stage"
+            value={form.stage}
+            onChange={(e) => setForm({ ...form, stage: e.target.value as DealStage })}
+            options={STAGES.map((s) => ({ value: s.id, label: s.label }))}
+          />
+          <Input label="Close Date" type="date" value={form.closeDate} onChange={(e) => setForm({ ...form, closeDate: e.target.value })} />
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <Button variant="secondary" onClick={() => setShowNew(false)}>Cancel</Button>
+          <Button onClick={handleCreate}>Create Deal</Button>
+        </div>
+      </Modal>
+    </DashboardLayout>
+  );
+}
