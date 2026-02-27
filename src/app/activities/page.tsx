@@ -166,8 +166,8 @@ export default function ActivitiesPage() {
           subject: form.subject,
           status: targetStatus,
           dueDate: form.dueDate || new Date().toISOString().split("T")[0],
-          ownerId: user?.id || "1",
-          ownerName: user?.name || "Demo User",
+          ownerId: user?.id || "",
+          ownerName: user?.name || "",
           orgId: org.id,
           createdAt: new Date().toISOString().split("T")[0],
         })
