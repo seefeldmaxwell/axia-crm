@@ -222,6 +222,27 @@ export const api = {
   // Auth (OAuth login)
   loginWithOAuth: (provider: string, email: string, name: string, avatar?: string) =>
     apiPost<any>("/api/auth/login", { provider, email, name, avatar }),
+
+  // Gmail Mail
+  getGmailInbox: (folder?: string, maxResults?: number, pageToken?: string) => {
+    const params = new URLSearchParams();
+    if (folder) params.set("folder", folder);
+    if (maxResults) params.set("maxResults", String(maxResults));
+    if (pageToken) params.set("pageToken", pageToken);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    return apiGet<any>(`/api/mail/inbox${q}`);
+  },
+  getGmailMessage: (id: string) => apiGet<any>(`/api/mail/message/${id}`),
+  sendGmail: (data: { to: string; subject: string; body: string; cc?: string; bcc?: string }) =>
+    apiPost<any>("/api/mail/send", data),
+  getGmailFolders: () => apiGet<any[]>("/api/mail/folders"),
+  starGmail: (id: string, starred: boolean) => apiPost<any>(`/api/mail/star/${id}`, { starred }),
+  markGmailRead: (id: string, read: boolean) => apiPost<any>(`/api/mail/read/${id}`, { read }),
+  trashGmail: (id: string) => apiDelete(`/api/mail/message/${id}`),
+
+  // AI Chat
+  chat: (message: string, history?: { role: string; content: string }[]) =>
+    apiPost<{ reply: string }>("/api/chat", { message, history }),
 };
 
 // ─── D1 snake_case → Frontend camelCase mappers ───

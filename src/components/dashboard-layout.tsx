@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Avatar } from "./ui/avatar";
 import { ThemeToggle } from "./ui/theme-toggle";
+import { api } from "@/lib/api";
 
 const navSections = [
   {
@@ -60,6 +61,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, org, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mailUnread, setMailUnread] = useState(0);
+
+  useEffect(() => {
+    // Fetch unread count from Gmail
+    if (user && org) {
+      api.getGmailInbox("INBOX", 50).then((data: any) => {
+        const unread = (data.messages || []).filter((m: any) => !m.read).length;
+        setMailUnread(unread);
+      }).catch(() => {});
+    }
+  }, [user, org]);
 
   if (!user) return null;
 
@@ -145,7 +157,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <item.icon size={16} className="shrink-0" strokeWidth={1.5} />
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate flex-1">{item.label}</span>
+                  {item.href === "/mail" && mailUnread > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 shrink-0"
+                      style={{
+                        background: "var(--accent-blue)",
+                        color: "#fff",
+                        borderRadius: "var(--radius-sm)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {mailUnread > 99 ? "99+" : mailUnread}
+                    </span>
+                  )}
                 </Link>
               );
             })}

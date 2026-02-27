@@ -22,6 +22,7 @@ export interface OAuthUser {
   email: string;
   avatar?: string;
   provider: "google" | "microsoft";
+  googleAccessToken?: string;
 }
 
 // ─── Google Sign-In (Authorization Code Flow) ───
@@ -35,10 +36,10 @@ export function initiateGoogleLogin(): void {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: getRedirectUri(),
     response_type: "code",
-    scope: "openid email profile",
+    scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
     state: state,
     access_type: "offline",
-    prompt: "select_account",
+    prompt: "consent",
   });
 
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -63,13 +64,18 @@ async function exchangeGoogleCode(code: string): Promise<OAuthUser | null> {
     }
 
     const data = await res.json();
-    return {
+    const user: OAuthUser & { googleRefreshToken?: string; tokenExpiresAt?: string } = {
       id: data.email, // Will be replaced with DB user id after /auth/login
       name: data.name || "User",
       email: data.email || "",
       avatar: data.avatar || undefined,
       provider: "google",
+      googleAccessToken: data.google_access_token || undefined,
     };
+    // Attach extra token fields for pass-through to backend
+    (user as any).googleRefreshToken = data.google_refresh_token || undefined;
+    (user as any).tokenExpiresAt = data.token_expires_at || undefined;
+    return user;
   } catch (e) {
     console.error("Google exchange error:", e);
     return null;

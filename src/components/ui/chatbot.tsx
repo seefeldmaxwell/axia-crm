@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -17,7 +18,7 @@ export function ChatBot() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm Axia AI. I can help you navigate the CRM, find records, create tasks, or answer questions. What do you need?",
+      content: "Hi! I'm Axia AI. I can help you navigate the CRM, find records, create tasks, or answer questions about your data. What do you need?",
       timestamp: new Date(),
     },
   ]);
@@ -27,43 +28,82 @@ export function ChatBot() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+    const userMessage = input.trim();
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input.trim(),
+      content: userMessage,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response (replace with real API call later)
-    setTimeout(() => {
-      const responses = [
-        "I can help with that! Let me look into it.",
-        "You can find that in the sidebar under Sales → Leads.",
-        "Would you like me to create a new record for that?",
-        "I've noted that. Is there anything else you need?",
-        "Try checking the Activities board — it should be under Active items.",
-        "I can pull up those numbers. Give me a moment.",
-      ];
+    try {
+      // Build history for context (last 10 messages excluding welcome)
+      const history = messages
+        .filter((m) => m.id !== "welcome")
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const result = await api.chat(userMessage, history);
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: result.reply || "I'm not sure how to help with that.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (e) {
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I couldn't connect to the AI service. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 800 + Math.random() * 1200);
+    }
+  };
+
+  const formatTime = (d: Date) => {
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
+
+  // Parse markdown-style links in messages
+  const renderContent = (content: string) => {
+    // Handle [text](/path) links
+    const parts = content.split(/(\[[^\]]+\]\([^)]+\))/g);
+    return parts.map((part, i) => {
+      const match = part.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (match) {
+        return (
+          <a
+            key={i}
+            href={match[2]}
+            className="underline font-medium"
+            style={{ color: "var(--accent-blue)" }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = match[2];
+            }}
+          >
+            {match[1]}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
   };
 
   return (
@@ -107,10 +147,7 @@ export function ChatBot() {
           >
             <div
               className="w-8 h-8 flex items-center justify-center"
-              style={{
-                background: "var(--accent-blue)",
-                borderRadius: "50%",
-              }}
+              style={{ background: "var(--accent-blue)", borderRadius: "50%" }}
             >
               <Bot size={16} color="#fff" />
             </div>
@@ -131,36 +168,43 @@ export function ChatBot() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" && (
+              <div key={msg.id}>
+                <div className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "assistant" && (
+                    <div
+                      className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: "var(--accent-blue-muted)", borderRadius: "50%" }}
+                    >
+                      <Bot size={12} style={{ color: "var(--accent-blue)" }} />
+                    </div>
+                  )}
                   <div
-                    className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: "var(--accent-blue-muted)", borderRadius: "50%" }}
+                    className="max-w-[75%] px-3 py-2 text-[13px] leading-relaxed"
+                    style={{
+                      borderRadius: msg.role === "user" ? "var(--radius-md) var(--radius-md) 2px var(--radius-md)" : "var(--radius-md) var(--radius-md) var(--radius-md) 2px",
+                      background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-tertiary)",
+                      color: msg.role === "user" ? "#fff" : "var(--text-primary)",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
-                    <Bot size={12} style={{ color: "var(--accent-blue)" }} />
+                    {renderContent(msg.content)}
                   </div>
-                )}
-                <div
-                  className="max-w-[75%] px-3 py-2 text-[13px] leading-relaxed"
-                  style={{
-                    borderRadius: msg.role === "user" ? "var(--radius-md) var(--radius-md) 2px var(--radius-md)" : "var(--radius-md) var(--radius-md) var(--radius-md) 2px",
-                    background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-tertiary)",
-                    color: msg.role === "user" ? "#fff" : "var(--text-primary)",
-                  }}
-                >
-                  {msg.content}
+                  {msg.role === "user" && (
+                    <div
+                      className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: "var(--accent-purple)", borderRadius: "50%", opacity: 0.7 }}
+                    >
+                      <User size={12} color="#fff" />
+                    </div>
+                  )}
                 </div>
-                {msg.role === "user" && (
-                  <div
-                    className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: "var(--accent-purple)", borderRadius: "50%", opacity: 0.7 }}
-                  >
-                    <User size={12} color="#fff" />
-                  </div>
-                )}
+                {/* Timestamp */}
+                <div
+                  className={`text-[9px] mt-0.5 ${msg.role === "user" ? "text-right mr-8" : "ml-8"}`}
+                  style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}
+                >
+                  {formatTime(msg.timestamp)}
+                </div>
               </div>
             ))}
             {isTyping && (
@@ -172,10 +216,11 @@ export function ChatBot() {
                   <Bot size={12} style={{ color: "var(--accent-blue)" }} />
                 </div>
                 <div
-                  className="px-3 py-2 text-[13px]"
+                  className="px-3 py-2 text-[13px] flex items-center gap-2"
                   style={{ background: "var(--bg-tertiary)", borderRadius: "var(--radius-md)", color: "var(--text-tertiary)" }}
                 >
-                  <span className="animate-pulse">Typing...</span>
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>Thinking...</span>
                 </div>
               </div>
             )}
@@ -192,23 +237,26 @@ export function ChatBot() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleSend(); }}
               placeholder="Ask Axia AI..."
+              disabled={isTyping}
               className="flex-1 px-3 py-2 text-[13px] outline-none"
               style={{
                 background: "var(--bg-quaternary)",
                 border: "1px solid var(--border-primary)",
                 borderRadius: "var(--radius-sm)",
                 color: "var(--text-primary)",
+                opacity: isTyping ? 0.6 : 1,
               }}
             />
             <button
               onClick={handleSend}
+              disabled={!input.trim() || isTyping}
               className="w-8 h-8 flex items-center justify-center shrink-0 transition-colors"
               style={{
-                background: input.trim() ? "var(--accent-blue)" : "var(--bg-quaternary)",
+                background: input.trim() && !isTyping ? "var(--accent-blue)" : "var(--bg-quaternary)",
                 borderRadius: "var(--radius-sm)",
-                color: input.trim() ? "#fff" : "var(--text-tertiary)",
+                color: input.trim() && !isTyping ? "#fff" : "var(--text-tertiary)",
               }}
             >
               <Send size={14} />

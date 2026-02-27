@@ -22,10 +22,13 @@ import records from './routes/records';
 import team from './routes/team';
 import users from './routes/users';
 import emails from './routes/emails';
+import mail from './routes/mail';
+import chat from './routes/chat';
 
 type Bindings = {
   DB: D1Database;
   GOOGLE_CLIENT_SECRET: string;
+  ANTHROPIC_API_KEY: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -34,7 +37,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'X-User-Id', 'X-Org-Id'],
+  allowHeaders: ['Content-Type', 'X-User-Id', 'X-Org-Id', 'Authorization'],
 }));
 
 // Health check
@@ -62,5 +65,7 @@ app.route('/api/records', records);
 app.route('/api/team', team);
 app.route('/api/users', users);
 app.route('/api/emails', emails);
+app.route('/api/mail', mail);
+app.route('/api/chat', chat);
 
 export default app;

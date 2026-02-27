@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS users (
   provider TEXT CHECK(provider IN ('google','microsoft')),
   provider_id TEXT,
   is_admin INTEGER DEFAULT 0,
+  google_access_token TEXT,
+  google_refresh_token TEXT,
+  token_expires_at TEXT,
+  last_login TEXT,
+  is_active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -258,4 +263,20 @@ CREATE TABLE IF NOT EXISTS record_tags (
   record_type TEXT NOT NULL,
   record_id TEXT NOT NULL,
   PRIMARY KEY (tag_id, record_type, record_id)
+);
+
+-- Emails (local copy / cache)
+CREATE TABLE IF NOT EXISTS emails (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL REFERENCES organizations(id),
+  sender TEXT,
+  sender_email TEXT,
+  subject TEXT,
+  preview TEXT,
+  body TEXT,
+  date TEXT,
+  folder TEXT DEFAULT 'Inbox',
+  read INTEGER DEFAULT 0,
+  starred INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
 );

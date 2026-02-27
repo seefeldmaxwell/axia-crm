@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseOAuthCallback } from "@/lib/oauth";
 import { storeUser, storeOrg } from "@/lib/auth";
-import { api } from "@/lib/api";
 import { User } from "@/lib/types";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://axia-crm-api.seefeldmaxwell1.workers.dev";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -17,13 +18,22 @@ export default function AuthCallbackPage() {
 
       if (oauthUser) {
         try {
-          // POST to backend to check org domain and get/create user
-          const response = await api.loginWithOAuth(
-            oauthUser.provider,
-            oauthUser.email,
-            oauthUser.name,
-            oauthUser.avatar
-          );
+          // POST to backend with tokens to check org domain and get/create user
+          const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider: oauthUser.provider,
+              email: oauthUser.email,
+              name: oauthUser.name,
+              avatar: oauthUser.avatar,
+              google_access_token: oauthUser.googleAccessToken,
+              google_refresh_token: (oauthUser as any).googleRefreshToken,
+              token_expires_at: (oauthUser as any).tokenExpiresAt,
+            }),
+          });
+
+          const response = await res.json();
 
           if (response.error === "org_not_found") {
             setError("No organization found for your email domain. Contact your admin to get access.");
@@ -52,6 +62,11 @@ export default function AuthCallbackPage() {
           }
           localStorage.setItem("axia_auth_provider", oauthUser.provider);
 
+          // Store google access token for frontend Gmail API calls if needed
+          if (oauthUser.googleAccessToken) {
+            localStorage.setItem("google_access_token", oauthUser.googleAccessToken);
+          }
+
           storeUser(user);
           if (response.org) {
             storeOrg({
@@ -66,7 +81,6 @@ export default function AuthCallbackPage() {
           // Clean the URL hash and redirect
           window.location.replace("/home");
         } catch (e: any) {
-          // If the API call itself fails (403, etc)
           if (e.message?.includes("403")) {
             setError("No organization found for your email domain. Contact your admin to get access.");
           } else {
@@ -74,7 +88,6 @@ export default function AuthCallbackPage() {
           }
         }
       } else {
-        // Check for error in query params (Google code flow) or hash (MS implicit flow)
         const queryParams = new URLSearchParams(window.location.search);
         const hashStr = window.location.hash;
         const queryError = queryParams.get("error_description") || queryParams.get("error");
