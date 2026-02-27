@@ -111,6 +111,15 @@ export interface Activity {
   completedAt?: string;
 }
 
+export interface ActivityItem {
+  id: string;
+  activityId: string;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export type LeadStatus = "New" | "Contacted" | "Qualified" | "Unqualified";
 
 export interface Lead {

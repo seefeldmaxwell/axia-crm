@@ -112,6 +112,12 @@ export const api = {
   updateActivity: (id: string, data: any) => apiPut<any>(`/api/activities/${id}`, data),
   deleteActivity: (id: string) => apiDelete(`/api/activities/${id}`),
 
+  // Activity Items (sub-items)
+  getActivityItems: (activityId: string) => apiGet<any[]>(`/api/activities/${activityId}/items`),
+  createActivityItem: (activityId: string, data: any) => apiPost<any>(`/api/activities/${activityId}/items`, data),
+  updateActivityItem: (activityId: string, itemId: string, data: any) => apiPut<any>(`/api/activities/${activityId}/items/${itemId}`, data),
+  deleteActivityItem: (activityId: string, itemId: string) => apiDelete(`/api/activities/${activityId}/items/${itemId}`),
+
   // Cases
   getCases: () => apiGet<any[]>("/api/cases"),
   getCase: (id: string) => apiGet<any>(`/api/cases/${id}`),
@@ -320,6 +326,17 @@ export function mapDealItem(r: any) {
   return {
     id: r.id,
     dealId: r.deal_id,
+    title: r.title,
+    completed: r.completed === 1 || r.completed === true,
+    sortOrder: r.sort_order || 0,
+    createdAt: r.created_at || "",
+  };
+}
+
+export function mapActivityItem(r: any) {
+  return {
+    id: r.id,
+    activityId: r.activity_id,
     title: r.title,
     completed: r.completed === 1 || r.completed === true,
     sortOrder: r.sort_order || 0,

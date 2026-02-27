@@ -55,4 +55,47 @@ app.delete('/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// ── Activity Sub-Items ──
+
+app.get('/:activityId/items', async (c) => {
+  const activityId = c.req.param('activityId');
+  const result = await c.env.DB.prepare(
+    'SELECT * FROM activity_items WHERE activity_id = ? ORDER BY sort_order ASC, created_at ASC'
+  ).bind(activityId).all();
+  return c.json(result.results);
+});
+
+app.post('/:activityId/items', async (c) => {
+  const activityId = c.req.param('activityId');
+  const body = await c.req.json();
+  const id = uuid();
+  const ts = now();
+  await c.env.DB.prepare(
+    `INSERT INTO activity_items (id, activity_id, title, completed, sort_order, created_at)
+     VALUES (?, ?, ?, 0, ?, ?)`
+  ).bind(id, activityId, body.title, body.sort_order || 0, ts).run();
+  const record = await c.env.DB.prepare('SELECT * FROM activity_items WHERE id = ?').bind(id).first();
+  return c.json(record, 201);
+});
+
+app.put('/:activityId/items/:itemId', async (c) => {
+  const itemId = c.req.param('itemId');
+  const body = await c.req.json();
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (body.title !== undefined) { fields.push('title = ?'); values.push(body.title); }
+  if (body.completed !== undefined) { fields.push('completed = ?'); values.push(body.completed ? 1 : 0); }
+  if (body.sort_order !== undefined) { fields.push('sort_order = ?'); values.push(body.sort_order); }
+  if (fields.length === 0) return c.json({ error: 'No fields to update' }, 400);
+  values.push(itemId);
+  await c.env.DB.prepare(`UPDATE activity_items SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+  const record = await c.env.DB.prepare('SELECT * FROM activity_items WHERE id = ?').bind(itemId).first();
+  return c.json(record);
+});
+
+app.delete('/:activityId/items/:itemId', async (c) => {
+  await c.env.DB.prepare('DELETE FROM activity_items WHERE id = ?').bind(c.req.param('itemId')).run();
+  return c.json({ success: true });
+});
+
 export default app;
