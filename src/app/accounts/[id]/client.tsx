@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useAccount, useUpdateAccount, useContacts, useDeals, useCases, useActivities } from "@/hooks/use-data";
+import { useAccount, useUpdateAccount, useDeleteAccount, useContacts, useDeals, useCases, useActivities } from "@/hooks/use-data";
 import { Account, Contact, Deal } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
-import { Building2, Phone, Globe, MapPin, ArrowLeft, Users, TrendingUp, Briefcase, Clock } from "lucide-react";
+import { Building2, Phone, Globe, MapPin, ArrowLeft, Users, TrendingUp, Briefcase, Clock, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export function AccountDetailClient() {
@@ -25,6 +25,7 @@ export function AccountDetailClient() {
 
   const { data: account, loading: accountLoading, refetch: refetchAccount } = useAccount(id);
   const updateAccount = useUpdateAccount();
+  const deleteAccount = useDeleteAccount();
   const { data: allContacts } = useContacts(org?.id);
   const { data: allDeals } = useDeals(org?.id);
   const { data: allCases } = useCases(org?.id);
@@ -93,9 +94,17 @@ export function AccountDetailClient() {
             <h1 className="text-xl font-bold text-zen-text">{account.name}</h1>
             <p className="text-sm text-zen-text-secondary">{account.industry} &middot; {account.type}</p>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/accounts")}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={async () => {
+              if (!confirm("Delete this account?")) return;
+              try { await deleteAccount.mutate(id); router.push("/accounts"); toast("Account deleted"); } catch { toast("Failed to delete"); }
+            }}>
+              <Trash2 size={16} />
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/accounts")}>
+              <ArrowLeft size={16} className="mr-1" /> Back
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

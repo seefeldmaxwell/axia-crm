@@ -9,9 +9,9 @@ import { InlineEdit } from "@/components/ui/inline-edit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useLead, useUpdateLead, useConvertLead } from "@/hooks/use-data";
+import { useLead, useUpdateLead, useDeleteLead, useConvertLead } from "@/hooks/use-data";
 import { Lead } from "@/lib/types";
-import { UserPlus, ArrowLeft, ArrowRight } from "lucide-react";
+import { UserPlus, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 
 export function LeadDetailClient() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +21,7 @@ export function LeadDetailClient() {
 
   const { data: lead, loading, refetch } = useLead(id);
   const updateLead = useUpdateLead();
+  const deleteLead = useDeleteLead();
   const convertLead = useConvertLead();
 
   const updateField = async (field: keyof Lead, value: string) => {
@@ -84,6 +85,12 @@ export function LeadDetailClient() {
           <div className="flex items-center gap-2">
             <Button onClick={convertToContact}>
               <ArrowRight size={16} className="mr-1" /> Convert to Contact
+            </Button>
+            <Button variant="ghost" onClick={async () => {
+              if (!confirm("Delete this lead?")) return;
+              try { await deleteLead.mutate(id); router.push("/leads"); toast("Lead deleted"); } catch { toast("Failed to delete"); }
+            }}>
+              <Trash2 size={16} />
             </Button>
             <Button variant="secondary" onClick={() => router.push("/leads")}>
               <ArrowLeft size={16} className="mr-1" /> Back

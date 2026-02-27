@@ -32,6 +32,7 @@ import {
   CheckSquare,
   Clock,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 const TYPE_COLORS: Record<ActivityType, string> = {
@@ -157,6 +158,27 @@ export default function CalendarPage() {
     } catch (err) {
       console.error("Failed to book appointment:", err);
       toast("Failed to book appointment");
+    }
+  };
+
+  const handleDeleteActivity = async (actId: string) => {
+    try {
+      await api.deleteActivity(actId);
+      await fetchActivities();
+      toast("Activity deleted");
+    } catch {
+      toast("Failed to delete activity");
+    }
+  };
+
+  const handleToggleStatus = async (act: Activity) => {
+    const next = act.status === "Done" ? "To Do" : "Done";
+    try {
+      await api.updateActivity(act.id, toSnake({ status: next }));
+      await fetchActivities();
+      toast(next === "Done" ? "Marked as done" : "Reopened");
+    } catch {
+      toast("Failed to update status");
     }
   };
 
@@ -622,6 +644,28 @@ export default function CalendarPage() {
                                 >
                                   {TYPE_LABELS[act.type]}
                                 </span>
+                                <div className="ml-auto flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleToggleStatus(act)}
+                                    className="p-1 transition-colors"
+                                    style={{ color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)" }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-green)"; e.currentTarget.style.background = "var(--bg-quaternary)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-tertiary)"; e.currentTarget.style.background = "transparent"; }}
+                                    title={act.status === "Done" ? "Reopen" : "Mark done"}
+                                  >
+                                    <CheckSquare size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteActivity(act.id)}
+                                    className="p-1 transition-colors"
+                                    style={{ color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)" }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-red)"; e.currentTarget.style.background = "var(--accent-red-muted)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-tertiary)"; e.currentTarget.style.background = "transparent"; }}
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>

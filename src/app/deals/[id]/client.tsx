@@ -10,10 +10,10 @@ import { InlineEdit } from "@/components/ui/inline-edit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useDeal, useUpdateDeal, useActivities } from "@/hooks/use-data";
+import { useDeal, useUpdateDeal, useDeleteDeal, useActivities } from "@/hooks/use-data";
 import { Deal } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
-import { TrendingUp, ArrowLeft, Calendar, DollarSign, Clock, Phone, Mail, CheckSquare } from "lucide-react";
+import { TrendingUp, ArrowLeft, Calendar, DollarSign, Clock, Phone, Mail, CheckSquare, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export function DealDetailClient() {
@@ -25,6 +25,7 @@ export function DealDetailClient() {
   const { data: deal, loading: dealLoading, refetch: refetchDeal } = useDeal(id);
   const { data: allActivities, loading: activitiesLoading } = useActivities(org?.id);
   const updateDeal = useUpdateDeal();
+  const deleteDeal = useDeleteDeal();
 
   const activities = useMemo(() => {
     if (!deal || !allActivities) return [];
@@ -88,9 +89,17 @@ export function DealDetailClient() {
               <span className="text-lg font-bold text-zen-text">{formatCurrency(deal.amount)}</span>
             </div>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/deals")}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={async () => {
+              if (!confirm("Delete this deal?")) return;
+              try { await deleteDeal.mutate(id); router.push("/deals"); toast("Deal deleted"); } catch { toast("Failed to delete"); }
+            }}>
+              <Trash2 size={16} />
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/deals")}>
+              <ArrowLeft size={16} className="mr-1" /> Back
+            </Button>
+          </div>
         </div>
 
         {/* Stage progress */}

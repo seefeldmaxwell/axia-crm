@@ -12,9 +12,9 @@ import { Search } from "@/components/ui/search";
 import { Modal } from "@/components/ui/modal";
 import { Input, Textarea, Select } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { useCases, useCreateCase } from "@/hooks/use-data";
+import { useCases, useCreateCase, useDeleteCase } from "@/hooks/use-data";
 import { Case, CasePriority, CaseStatus } from "@/lib/types";
-import { Plus, Briefcase } from "lucide-react";
+import { Plus, Briefcase, Trash2 } from "lucide-react";
 
 export default function CasesPage() {
   const { org } = useAuth();
@@ -25,6 +25,7 @@ export default function CasesPage() {
 
   const { data: cases = [], loading, refetch } = useCases(org?.id);
   const createCase = useCreateCase();
+  const deleteCaseMutation = useDeleteCase();
 
   const filtered = useMemo(() => {
     if (!search) return cases;
@@ -102,6 +103,25 @@ export default function CasesPage() {
     { key: "accountName", label: "Account", sortable: true },
     { key: "ownerName", label: "Owner", sortable: true },
     { key: "createdAt", label: "Created", sortable: true },
+    {
+      key: "_actions", label: "", className: "w-12",
+      render: (row: Record<string, unknown>) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={async () => {
+              if (!confirm("Delete this case?")) return;
+              try { await deleteCaseMutation.mutate(String(row.id)); refetch(); toast("Case deleted"); } catch { toast("Failed to delete"); }
+            }}
+            className="p-1.5 transition-colors"
+            style={{ color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-red)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-tertiary)"; }}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   if (!org) return null;

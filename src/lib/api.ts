@@ -209,6 +209,16 @@ export const api = {
     apiGet<any[]>(`/api/records/shares/${recordType}/${recordId}`),
   getSharedWithMe: () => apiGet<any[]>("/api/records/shared-with-me"),
 
+  // Emails
+  getEmails: () => apiGet<any[]>("/api/emails"),
+  createEmail: (data: any) => apiPost<any>("/api/emails", data),
+  updateEmail: (id: string, data: any) => apiPut<any>(`/api/emails/${id}`, data),
+  deleteEmail: (id: string) => apiDelete(`/api/emails/${id}`),
+
+  // User role update
+  updateUserRole: (userId: string, role: string) =>
+    apiPut<any>(`/api/users/${userId}/role`, { role }),
+
   // Auth (OAuth login)
   loginWithOAuth: (provider: string, email: string, name: string, avatar?: string) =>
     apiPost<any>("/api/auth/login", { provider, email, name, avatar }),

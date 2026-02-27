@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import {
   ToggleLeft, ToggleRight, Download, MapPin, Star,
 } from "lucide-react";
 
-/* ── Prospecting mock results ── */
+/* ── Prospecting result type ── */
 
 interface ProspectResult {
   id: string;
@@ -30,62 +30,6 @@ interface ProspectResult {
   website: string;
   rating: number;
 }
-
-const mockProspects: ProspectResult[] = [
-  { id: "pr1", business: "Apex Security Solutions", address: "123 Main St, Austin, TX 78701", phone: "(512) 555-0101", email: "info@apexsec.com", website: "apexsec.com", rating: 4.8 },
-  { id: "pr2", business: "Meridian IT Services", address: "456 Oak Ave, Austin, TX 78702", phone: "(512) 555-0202", email: "hello@meridianit.com", website: "meridianit.com", rating: 4.5 },
-  { id: "pr3", business: "CloudVault Inc", address: "789 Pine Blvd, Austin, TX 78703", phone: "(512) 555-0303", email: "sales@cloudvault.io", website: "cloudvault.io", rating: 4.2 },
-  { id: "pr4", business: "NetShield Corp", address: "321 Elm Dr, Austin, TX 78704", phone: "(512) 555-0404", email: "contact@netshield.com", website: "netshield.com", rating: 4.6 },
-  { id: "pr5", business: "DataFort Analytics", address: "654 Cedar Ln, Austin, TX 78705", phone: "(512) 555-0505", email: "info@datafort.ai", website: "datafort.ai", rating: 4.9 },
-];
-
-/* ── Default web forms ── */
-
-const defaultForms: WebForm[] = [
-  {
-    id: "wf1",
-    name: "Contact Us",
-    fields: [
-      { id: "f1", label: "Full Name", type: "text", required: true },
-      { id: "f2", label: "Email", type: "email", required: true },
-      { id: "f3", label: "Message", type: "textarea", required: false },
-    ],
-    status: "active",
-    submissions: 142,
-    conversionRate: 12.5,
-    orgId: "org1",
-    createdAt: "2025-11-10",
-    updatedAt: "2026-01-15",
-  },
-  {
-    id: "wf2",
-    name: "Free Security Assessment",
-    fields: [
-      { id: "f4", label: "Company Name", type: "text", required: true },
-      { id: "f5", label: "Work Email", type: "email", required: true },
-      { id: "f6", label: "Phone", type: "phone", required: true },
-    ],
-    status: "active",
-    submissions: 87,
-    conversionRate: 18.3,
-    orgId: "org1",
-    createdAt: "2025-12-01",
-    updatedAt: "2026-02-01",
-  },
-  {
-    id: "wf3",
-    name: "Newsletter Signup",
-    fields: [
-      { id: "f7", label: "Email Address", type: "email", required: true },
-    ],
-    status: "draft",
-    submissions: 256,
-    conversionRate: 8.7,
-    orgId: "org1",
-    createdAt: "2025-12-20",
-    updatedAt: "2026-01-28",
-  },
-];
 
 /* ── Embed code generator ── */
 
@@ -107,22 +51,6 @@ function generateEmbed(form: { name: string; fields: WebFormField[] }): string {
   return `<!-- Axia CRM Lead Form: ${form.name} -->\n<form action="https://api.axiacrm.com/forms/submit" method="POST">\n${fieldHtml}\n  <button type="submit">Submit</button>\n</form>`;
 }
 
-/* ── localStorage helpers ── */
-
-function getStoredForms(): WebForm[] {
-  if (typeof window === "undefined") return defaultForms;
-  try {
-    const raw = localStorage.getItem("axia_webforms");
-    return raw ? JSON.parse(raw) : defaultForms;
-  } catch {
-    return defaultForms;
-  }
-}
-
-function setStoredForms(forms: WebForm[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("axia_webforms", JSON.stringify(forms));
-}
 
 /* ── Component ── */
 
@@ -148,24 +76,40 @@ export default function LeadGenPage() {
   ]);
   const [embedCode, setEmbedCode] = useState<string | null>(null);
 
-  useEffect(() => {
-    setForms(getStoredForms());
-  }, []);
-
   const saveForms = (updated: WebForm[]) => {
     setForms(updated);
-    setStoredForms(updated);
   };
 
   /* ── Prospecting handlers ── */
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setSearching(true);
     setProspects([]);
-    setTimeout(() => {
-      setProspects(mockProspects);
+    try {
+      const accounts = await api.getAccounts();
+      const results: ProspectResult[] = accounts
+        .filter((a: any) => {
+          const name = (a.name || "").toLowerCase();
+          const industry = (a.industry || "").toLowerCase();
+          const q = bizType.toLowerCase();
+          return !q || name.includes(q) || industry.includes(q);
+        })
+        .map((a: any) => ({
+          id: a.id,
+          business: a.name,
+          address: a.billing_address || a.billingAddress || "—",
+          phone: a.phone || "—",
+          email: a.website ? `info@${a.website.replace(/^https?:\/\//, "")}` : "—",
+          website: a.website || "—",
+          rating: a.annual_revenue ? Math.min(5, 3 + (a.annual_revenue / 1000000)) : 4.0,
+        }));
+      setProspects(results);
+      if (results.length === 0) toast("No matching businesses found");
+    } catch {
+      toast("Failed to search businesses");
+    } finally {
       setSearching(false);
-    }, 1500);
+    }
   };
 
   const handleImport = async (prospect: ProspectResult) => {

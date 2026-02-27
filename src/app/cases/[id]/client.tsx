@@ -10,9 +10,9 @@ import { InlineEdit } from "@/components/ui/inline-edit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useCase, useUpdateCase, useActivities } from "@/hooks/use-data";
+import { useCase, useUpdateCase, useDeleteCase, useActivities } from "@/hooks/use-data";
 import { Case } from "@/lib/types";
-import { Briefcase, ArrowLeft, Phone, Mail, Calendar, CheckSquare, Clock } from "lucide-react";
+import { Briefcase, ArrowLeft, Phone, Mail, Calendar, CheckSquare, Clock, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export function CaseDetailClient() {
@@ -23,6 +23,7 @@ export function CaseDetailClient() {
 
   const { data: caseItem, loading: caseLoading, refetch } = useCase(id);
   const updateCase = useUpdateCase();
+  const deleteCase = useDeleteCase();
   const { data: allActivities = [], loading: activitiesLoading } = useActivities(org?.id);
 
   const activities = useMemo(() => {
@@ -89,9 +90,17 @@ export function CaseDetailClient() {
               </Badge>
             </div>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/cases")}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={async () => {
+              if (!confirm("Delete this case?")) return;
+              try { await deleteCase.mutate(id); router.push("/cases"); toast("Case deleted"); } catch { toast("Failed to delete"); }
+            }}>
+              <Trash2 size={16} />
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/cases")}>
+              <ArrowLeft size={16} className="mr-1" /> Back
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

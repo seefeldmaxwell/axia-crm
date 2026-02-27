@@ -11,9 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useContact, useUpdateContact, useActivities } from "@/hooks/use-data";
+import { useContact, useUpdateContact, useDeleteContact, useActivities } from "@/hooks/use-data";
 import { Contact, Activity } from "@/lib/types";
-import { Phone, Mail, MapPin, Building2, Briefcase, Clock, Calendar, CheckSquare, ArrowLeft } from "lucide-react";
+import { Phone, Mail, MapPin, Building2, Briefcase, Clock, Calendar, CheckSquare, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export function ContactDetailClient() {
@@ -24,6 +24,7 @@ export function ContactDetailClient() {
 
   const { data: contact, loading: contactLoading, refetch: refetchContact } = useContact(id);
   const updateContact = useUpdateContact();
+  const deleteContact = useDeleteContact();
   const { data: activities, loading: activitiesLoading } = useActivities(org?.id, { contactId: id });
 
   const sortedActivities = useMemo(() => {
@@ -91,9 +92,17 @@ export function ContactDetailClient() {
             </div>
             <p className="text-sm text-zen-text-secondary">{contact.title} at {contact.accountName}</p>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/contacts")}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={async () => {
+              if (!confirm("Delete this contact?")) return;
+              try { await deleteContact.mutate(id); router.push("/contacts"); toast("Contact deleted"); } catch { toast("Failed to delete"); }
+            }}>
+              <Trash2 size={16} />
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/contacts")}>
+              <ArrowLeft size={16} className="mr-1" /> Back
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -21,6 +21,7 @@ import seed from './routes/seed';
 import records from './routes/records';
 import team from './routes/team';
 import users from './routes/users';
+import emails from './routes/emails';
 
 type Bindings = {
   DB: D1Database;
@@ -60,5 +61,6 @@ app.route('/api/seed', seed);
 app.route('/api/records', records);
 app.route('/api/team', team);
 app.route('/api/users', users);
+app.route('/api/emails', emails);
 
 export default app;

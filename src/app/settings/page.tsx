@@ -288,11 +288,16 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRoleChange = (memberId: string, newRole: string) => {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
-    );
-    toast("Role updated", "success");
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    try {
+      await api.updateUserRole(memberId, newRole);
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+      );
+      toast("Role updated", "success");
+    } catch {
+      toast("Failed to update role", "error");
+    }
   };
 
   const handleSaveOrg = async () => {
@@ -682,29 +687,17 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p
-                      className="text-[16px] font-semibold data-value"
-                      style={{ color: "var(--text-primary)" }}
+                      className="text-[14px] font-medium"
+                      style={{ color: "var(--text-secondary)" }}
                     >
-                      (305) 555-0100
+                      No phone number assigned
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: "var(--accent-green)" }}
-                      />
-                      <span
-                        className="text-[12px]"
-                        style={{ color: "var(--accent-green)" }}
-                      >
-                        Active
-                      </span>
-                      <span
-                        className="text-[12px]"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        -- Local number -- Miami, FL
-                      </span>
-                    </div>
+                    <p
+                      className="text-[12px] mt-0.5"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Purchase a number below to enable outbound calling
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -740,12 +733,13 @@ export default function SettingsPage() {
                     variant="secondary"
                     size="sm"
                     className="mt-3"
-                    onClick={() =>
-                      toast("Number purchasing coming soon", "info")
-                    }
+                    disabled
                   >
                     Browse Numbers
                   </Button>
+                  <p className="text-[11px] mt-1.5" style={{ color: "var(--text-tertiary)" }}>
+                    Requires Twilio integration
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -1053,9 +1047,7 @@ export default function SettingsPage() {
                     <Button
                       variant="secondary"
                       className="w-full"
-                      onClick={() =>
-                        toast("Downgrade flow coming soon", "info")
-                      }
+                      disabled
                     >
                       Downgrade
                     </Button>
@@ -1220,11 +1212,9 @@ export default function SettingsPage() {
                     <Button
                       variant="primary"
                       className="w-full"
-                      onClick={() =>
-                        toast("Upgrade flow coming soon", "info")
-                      }
+                      disabled
                     >
-                      Upgrade
+                      Contact Sales
                     </Button>
                   </CardContent>
                 </Card>

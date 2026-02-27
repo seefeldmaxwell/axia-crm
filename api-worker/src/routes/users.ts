@@ -58,4 +58,26 @@ app.post('/invite', async (c) => {
   return c.json(user, 201);
 });
 
+// Update user role
+app.put('/:id/role', async (c) => {
+  const db = c.env.DB;
+  const orgId = getOrgId(c);
+  const userId = getUserId(c);
+  const targetId = c.req.param('id');
+  const body = await c.req.json();
+  const { role } = body;
+
+  if (!role) return c.json({ error: 'Role is required' }, 400);
+
+  // Check requesting user is admin
+  const requester = await db.prepare('SELECT * FROM users WHERE id = ? AND org_id = ?').bind(userId, orgId).first() as any;
+  if (!requester || (requester.role !== 'admin' && requester.is_admin !== 1)) {
+    return c.json({ error: 'Only admins can change roles' }, 403);
+  }
+
+  await db.prepare('UPDATE users SET role = ? WHERE id = ? AND org_id = ?').bind(role, targetId, orgId).run();
+  const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(targetId).first();
+  return c.json(user);
+});
+
 export default app;
