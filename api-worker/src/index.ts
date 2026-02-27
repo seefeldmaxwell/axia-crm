@@ -29,7 +29,7 @@ import notes from './routes/notes';
 type Bindings = {
   DB: D1Database;
   GOOGLE_CLIENT_SECRET: string;
-  ANTHROPIC_API_KEY: string;
+  AI: any;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
