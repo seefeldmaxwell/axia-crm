@@ -80,6 +80,15 @@ export interface Deal {
   updatedAt: string;
 }
 
+export interface DealItem {
+  id: string;
+  dealId: string;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export type ActivityType = "call" | "email" | "meeting" | "task";
 export type ActivityStatus = "To Do" | "In Progress" | "Waiting" | "Done";
 

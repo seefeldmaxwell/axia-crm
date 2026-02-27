@@ -1,30 +1,29 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Input, Select } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
-import { api, mapDeal, toSnake } from "@/lib/api";
-import { Deal, DealStage } from "@/lib/types";
+import { api, mapDeal, mapDealItem, toSnake } from "@/lib/api";
+import { Deal, DealStage, DealItem } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from "@hello-pangea/dnd";
 import {
-  Plus, Filter, Settings2, Star, ChevronDown, LayoutGrid, BarChart3, List,
-  Loader2,
+  Plus, Filter, Settings2, Star, ChevronDown, ChevronRight,
+  LayoutGrid, BarChart3, List, Loader2, Check, X, Trash2,
 } from "lucide-react";
 
 const STAGES: { id: DealStage; label: string; color: string; wipLimit: number }[] = [
   { id: "Prospecting", label: "Prospecting", color: "#605E5C", wipLimit: 10 },
   { id: "Qualification", label: "Qualification", color: "#0078D4", wipLimit: 10 },
   { id: "Proposal", label: "Proposal", color: "#FFB900", wipLimit: 10 },
-  { id: "Negotiation", label: "Negotiation", color: "#FFB900", wipLimit: 10 },
+  { id: "Negotiation", label: "Negotiation", color: "#8764B8", wipLimit: 10 },
   { id: "Closed Won", label: "Closed Won", color: "#107C10", wipLimit: 10 },
   { id: "Closed Lost", label: "Closed Lost", color: "#A4262C", wipLimit: 10 },
 ];
@@ -36,6 +35,168 @@ function pseudoId(dealId: string): string {
   }
   return String(100000 + (hash % 900000));
 }
+
+/* ── Sub-Items component for each deal card ── */
+
+function DealSubItems({ dealId }: { dealId: string }) {
+  const [items, setItems] = useState<DealItem[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const raw = await api.getDealItems(dealId);
+      setItems(raw.map(mapDealItem));
+    } catch {
+      // silent
+    }
+  }, [dealId]);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  useEffect(() => {
+    if (adding && inputRef.current) inputRef.current.focus();
+  }, [adding]);
+
+  const handleAdd = async () => {
+    if (!newTitle.trim()) { setAdding(false); return; }
+    try {
+      await api.createDealItem(dealId, { title: newTitle.trim(), sort_order: items.length });
+      setNewTitle("");
+      setAdding(false);
+      await fetchItems();
+    } catch { /* silent */ }
+  };
+
+  const handleToggle = async (item: DealItem) => {
+    const updated = !item.completed;
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, completed: updated } : i));
+    try {
+      await api.updateDealItem(dealId, item.id, { completed: updated });
+    } catch {
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, completed: !updated } : i));
+    }
+  };
+
+  const handleDelete = async (itemId: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== itemId));
+    try {
+      await api.deleteDealItem(dealId, itemId);
+    } catch { await fetchItems(); }
+  };
+
+  const completedCount = items.filter((i) => i.completed).length;
+
+  return (
+    <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--ab-border)" }}>
+      {/* Header row: expand toggle + add button */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-[11px]"
+          style={{ color: "var(--ab-text-secondary)" }}
+        >
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <span>Sub-items</span>
+          {items.length > 0 && (
+            <span style={{ fontFamily: "var(--font-mono)" }}>
+              {completedCount}/{items.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); setAdding(true); }}
+          className="p-0.5 rounded"
+          style={{ color: "var(--ab-blue)" }}
+          title="Add sub-item"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      {items.length > 0 && (
+        <div className="mt-1 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--ab-border)" }}>
+          <div
+            className="h-full rounded-full transition-all"
+            style={{
+              width: `${(completedCount / items.length) * 100}%`,
+              background: completedCount === items.length ? "var(--ab-green)" : "var(--ab-blue)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Expanded items list */}
+      {expanded && (
+        <div className="mt-1.5 space-y-1">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-1.5 group"
+            >
+              <button
+                onClick={() => handleToggle(item)}
+                className="flex-shrink-0 w-[14px] h-[14px] rounded-sm flex items-center justify-center"
+                style={{
+                  border: item.completed ? "none" : "1.5px solid var(--ab-text-secondary)",
+                  background: item.completed ? "var(--ab-green)" : "transparent",
+                }}
+              >
+                {item.completed && <Check size={10} color="#fff" strokeWidth={3} />}
+              </button>
+              <span
+                className="text-[11px] flex-1 leading-tight"
+                style={{
+                  color: item.completed ? "var(--ab-text-secondary)" : "var(--ab-text)",
+                  textDecoration: item.completed ? "line-through" : "none",
+                }}
+              >
+                {item.title}
+              </span>
+              <button
+                onClick={() => handleDelete(item.id)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 transition-opacity"
+                style={{ color: "var(--ab-red)" }}
+              >
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+
+          {/* Inline add form */}
+          {adding && (
+            <div className="flex items-center gap-1">
+              <input
+                ref={inputRef}
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAdd();
+                  if (e.key === "Escape") { setAdding(false); setNewTitle(""); }
+                }}
+                placeholder="Add sub-item..."
+                className="flex-1 text-[11px] px-1.5 py-0.5 rounded"
+                style={{
+                  background: "var(--ab-header)",
+                  border: "1px solid var(--ab-border)",
+                  color: "var(--ab-text)",
+                  outline: "none",
+                }}
+              />
+              <button onClick={handleAdd} className="p-0.5" style={{ color: "var(--ab-green)" }}><Check size={12} /></button>
+              <button onClick={() => { setAdding(false); setNewTitle(""); }} className="p-0.5" style={{ color: "var(--ab-text-secondary)" }}><X size={12} /></button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main Deals Page ── */
 
 export default function DealsPage() {
   const { user, org } = useAuth();
@@ -81,7 +242,6 @@ export default function DealsPage() {
     const destStage = result.destination.droppableId as DealStage;
     const dealId = result.draggableId;
 
-    // Optimistic update
     setDealsLocal((prev) =>
       prev.map((d) =>
         d.id === dealId
@@ -143,6 +303,12 @@ export default function DealsPage() {
     }
   };
 
+  const openNewDealForStage = (stage: DealStage) => {
+    setNewStage(stage);
+    setForm({ ...form, stage });
+    setShowNew(true);
+  };
+
   if (!org) return null;
 
   if (loading) {
@@ -154,6 +320,11 @@ export default function DealsPage() {
       </DashboardLayout>
     );
   }
+
+  /* pipeline total */
+  const pipelineTotal = deals
+    .filter((d) => d.stage !== "Closed Won" && d.stage !== "Closed Lost")
+    .reduce((sum, d) => sum + d.amount, 0);
 
   return (
     <DashboardLayout>
@@ -178,36 +349,28 @@ export default function DealsPage() {
                 <Star size={14} style={{ color: "var(--ab-text-secondary)" }} />
               </div>
 
-              <div className="flex items-center" style={{ borderBottom: "2px solid transparent" }}>
-                <button
-                  onClick={() => setActiveTab("board")}
-                  className="px-3 py-1.5 text-[13px] font-medium relative"
-                  style={{ color: activeTab === "board" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
-                >
-                  <LayoutGrid size={14} className="inline mr-1.5" />
-                  Board
-                  {activeTab === "board" && <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "var(--ab-blue)" }} />}
-                </button>
-                <button
-                  onClick={() => setActiveTab("analytics")}
-                  className="px-3 py-1.5 text-[13px] font-medium"
-                  style={{ color: activeTab === "analytics" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
-                >
-                  <BarChart3 size={14} className="inline mr-1.5" />
-                  Analytics
-                </button>
-                <button
-                  onClick={() => setActiveTab("backlog")}
-                  className="px-3 py-1.5 text-[13px] font-medium"
-                  style={{ color: activeTab === "backlog" ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
-                >
-                  <List size={14} className="inline mr-1.5" />
-                  View as Backlog
-                </button>
+              <div className="flex items-center">
+                {(["board", "analytics", "backlog"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className="px-3 py-1.5 text-[13px] font-medium relative"
+                    style={{ color: activeTab === tab ? "var(--ab-blue)" : "var(--ab-text-secondary)" }}
+                  >
+                    {tab === "board" && <LayoutGrid size={14} className="inline mr-1.5" />}
+                    {tab === "analytics" && <BarChart3 size={14} className="inline mr-1.5" />}
+                    {tab === "backlog" && <List size={14} className="inline mr-1.5" />}
+                    {tab === "board" ? "Board" : tab === "analytics" ? "Analytics" : "View as Backlog"}
+                    {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "var(--ab-blue)" }} />}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-[12px]" style={{ fontFamily: "var(--font-mono)", color: "var(--ab-text-secondary)" }}>
+                Pipeline: {formatCurrency(pipelineTotal)}
+              </span>
               <button className="p-1.5" style={{ color: "var(--ab-text-secondary)" }}><Filter size={16} /></button>
               <button className="p-1.5" style={{ color: "var(--ab-text-secondary)" }}><Settings2 size={16} /></button>
             </div>
@@ -221,10 +384,11 @@ export default function DealsPage() {
               {STAGES.map((stage) => {
                 const items = columnItems[stage.id] || [];
                 const overWip = items.length >= stage.wipLimit;
+                const colTotal = items.reduce((s, d) => s + d.amount, 0);
                 return (
                   <div key={stage.id} className="flex-shrink-0 w-[280px] flex flex-col">
                     {/* Column header */}
-                    <div className="mb-1" style={{ borderTop: `2px solid ${stage.color}` }}>
+                    <div className="mb-1" style={{ borderTop: `3px solid ${stage.color}` }}>
                       <div className="flex items-center justify-between px-2 py-2" style={{ background: "var(--ab-header)" }}>
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-semibold" style={{ color: "var(--ab-text)" }}>{stage.label}</span>
@@ -238,18 +402,22 @@ export default function DealsPage() {
                               fontFamily: "var(--font-mono)",
                             }}
                           >
-                            {items.length}/{stage.wipLimit}
+                            {items.length}
                           </span>
                         </div>
-                        {stage.id === "Prospecting" && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--ab-text-secondary)" }}>
+                            {formatCurrency(colTotal)}
+                          </span>
                           <button
-                            onClick={() => { setNewStage("Prospecting"); setForm({ ...form, stage: "Prospecting" }); setShowNew(true); }}
+                            onClick={() => openNewDealForStage(stage.id)}
                             className="p-0.5"
                             style={{ color: "var(--ab-blue)" }}
+                            title={`Add deal to ${stage.label}`}
                           >
                             <Plus size={16} />
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
 
@@ -277,7 +445,7 @@ export default function DealsPage() {
                                     ...dragProvided.draggableProps.style,
                                     background: "var(--ab-card)",
                                     border: "1px solid var(--ab-border)",
-                                    borderLeft: `3px solid ${stage.color}`,
+                                    borderTop: `3px solid ${stage.color}`,
                                     borderRadius: "2px",
                                     boxShadow: dragSnapshot.isDragging ? "0 6px 20px rgba(0,0,0,.3)" : "none",
                                   }}
@@ -285,33 +453,36 @@ export default function DealsPage() {
                                   <div className="p-3">
                                     {/* ID + Title */}
                                     <div className="flex items-start gap-1.5 mb-2">
-                                      <span className="text-[11px] font-bold" style={{ color: "var(--ab-blue)", fontFamily: "var(--font-mono)" }}>
+                                      <span className="text-[11px] font-bold flex-shrink-0" style={{ color: "var(--ab-blue)", fontFamily: "var(--font-mono)" }}>
                                         #{pseudoId(deal.id)}
                                       </span>
-                                      <span className="text-[13px] font-medium leading-tight" style={{ color: "var(--ab-text)" }}>
+                                      <a
+                                        href={`/deals/${deal.id}`}
+                                        className="text-[13px] font-medium leading-tight hover:underline"
+                                        style={{ color: "var(--ab-text)" }}
+                                      >
                                         {deal.name}
-                                      </span>
+                                      </a>
                                     </div>
 
                                     {/* Customer */}
                                     <div className="flex items-center gap-1.5 mb-2">
-                                      <Avatar name={deal.accountName} size="sm" />
-                                      <span className="text-[12px]" style={{ color: "var(--ab-text-secondary)" }}>{deal.accountName}</span>
+                                      <Avatar name={deal.accountName || "?"} size="sm" />
+                                      <span className="text-[12px]" style={{ color: "var(--ab-text-secondary)" }}>{deal.accountName || "No account"}</span>
                                     </div>
 
-                                    {/* Value */}
-                                    <div className="text-[12px] mb-1" style={{ fontFamily: "var(--font-mono)", color: "var(--ab-text)" }}>
-                                      Value: {formatCurrency(deal.amount)}
-                                    </div>
-
-                                    {/* Close Date */}
-                                    <div className="text-[11px] mb-1" style={{ color: "var(--ab-text-secondary)" }}>
-                                      Close Date: {deal.closeDate}
+                                    {/* Value + Close Date row */}
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[12px] font-semibold" style={{ fontFamily: "var(--font-mono)", color: "var(--ab-text)" }}>
+                                        {formatCurrency(deal.amount)}
+                                      </span>
+                                      <span className="text-[10px]" style={{ color: "var(--ab-text-secondary)" }}>
+                                        {deal.closeDate}
+                                      </span>
                                     </div>
 
                                     {/* Priority */}
-                                    <div className="flex items-center gap-1 text-[11px] mb-2" style={{ color: "var(--ab-text-secondary)" }}>
-                                      Priority:
+                                    <div className="flex items-center gap-1 text-[11px] mb-1" style={{ color: "var(--ab-text-secondary)" }}>
                                       <span
                                         className="status-dot"
                                         style={{
@@ -319,10 +490,11 @@ export default function DealsPage() {
                                         }}
                                       />
                                       <span>{deal.probability >= 70 ? "High" : deal.probability >= 40 ? "Medium" : "Low"}</span>
+                                      <span style={{ fontFamily: "var(--font-mono)" }}>({deal.probability}%)</span>
                                     </div>
 
-                                    {/* Tags */}
-                                    <div className="flex flex-wrap gap-1">
+                                    {/* Tags row */}
+                                    <div className="flex flex-wrap gap-1 mb-0">
                                       {deal.accountName && (
                                         <span className="text-[10px] px-1.5 py-[1px]" style={{ background: "rgba(0,120,212,0.15)", color: "var(--ab-blue)", borderRadius: "2px" }}>
                                           {deal.accountName.split(" ")[0]}
@@ -334,6 +506,9 @@ export default function DealsPage() {
                                         </span>
                                       )}
                                     </div>
+
+                                    {/* Sub-items */}
+                                    <DealSubItems dealId={deal.id} />
                                   </div>
                                 </div>
                               )}

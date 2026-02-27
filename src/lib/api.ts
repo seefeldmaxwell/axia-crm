@@ -96,6 +96,12 @@ export const api = {
   updateDeal: (id: string, data: any) => apiPut<any>(`/api/deals/${id}`, data),
   deleteDeal: (id: string) => apiDelete(`/api/deals/${id}`),
 
+  // Deal Items (sub-items)
+  getDealItems: (dealId: string) => apiGet<any[]>(`/api/deals/${dealId}/items`),
+  createDealItem: (dealId: string, data: any) => apiPost<any>(`/api/deals/${dealId}/items`, data),
+  updateDealItem: (dealId: string, itemId: string, data: any) => apiPut<any>(`/api/deals/${dealId}/items/${itemId}`, data),
+  deleteDealItem: (dealId: string, itemId: string) => apiDelete(`/api/deals/${dealId}/items/${itemId}`),
+
   // Activities
   getActivities: (params?: { contact_id?: string; account_id?: string; deal_id?: string }) => {
     const query = params ? "?" + new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString() : "";
@@ -307,6 +313,17 @@ export function mapDeal(r: any) {
     description: r.description || "",
     createdAt: r.created_at || "",
     updatedAt: r.updated_at || "",
+  };
+}
+
+export function mapDealItem(r: any) {
+  return {
+    id: r.id,
+    dealId: r.deal_id,
+    title: r.title,
+    completed: r.completed === 1 || r.completed === true,
+    sortOrder: r.sort_order || 0,
+    createdAt: r.created_at || "",
   };
 }
 
