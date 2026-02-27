@@ -16,7 +16,7 @@ import {
 } from "@hello-pangea/dnd";
 import {
   Plus, Filter, Settings2, Star, ChevronDown, ChevronRight,
-  LayoutGrid, BarChart3, List, Loader2, Check, X, Trash2,
+  LayoutGrid, BarChart3, List, Loader2, Check, X, Trash2, ArrowRightCircle,
 } from "lucide-react";
 
 const STAGES: { id: DealStage; label: string; color: string; wipLimit: number }[] = [
@@ -303,6 +303,33 @@ export default function DealsPage() {
     }
   };
 
+  const convertToActivity = async (deal: Deal) => {
+    if (!org) return;
+    try {
+      await api.createActivity(
+        toSnake({
+          subject: deal.name,
+          type: "task",
+          status: "To Do",
+          priority: deal.probability >= 70 ? "high" : deal.probability >= 40 ? "medium" : "low",
+          description: `Converted from deal #${pseudoId(deal.id)} — ${formatCurrency(deal.amount)}${deal.accountName ? ` (${deal.accountName})` : ""}`,
+          dueDate: deal.closeDate || new Date().toISOString().split("T")[0],
+          ownerId: deal.ownerId || user?.id || "",
+          ownerName: deal.ownerName || user?.name || "",
+          orgId: org.id,
+          createdAt: new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString().split("T")[0],
+          contactId: "",
+          contactName: deal.accountName || "",
+        })
+      );
+      toast(`"${deal.name}" converted to activity`);
+    } catch (err) {
+      console.error("Failed to convert deal", err);
+      toast("Failed to convert to activity");
+    }
+  };
+
   const openNewDealForStage = (stage: DealStage) => {
     setNewStage(stage);
     setForm({ ...form, stage });
@@ -509,6 +536,23 @@ export default function DealsPage() {
 
                                     {/* Sub-items */}
                                     <DealSubItems dealId={deal.id} />
+
+                                    {/* Convert to Activity button — Closed Won only */}
+                                    {stage.id === "Closed Won" && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); convertToActivity(deal); }}
+                                        className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-medium transition-colors"
+                                        style={{
+                                          background: "rgba(16,124,16,0.12)",
+                                          color: "var(--ab-green)",
+                                          border: "1px solid rgba(16,124,16,0.25)",
+                                        }}
+                                        title="Create activity to fulfill this deal"
+                                      >
+                                        <ArrowRightCircle size={13} />
+                                        Convert to Activity
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               )}

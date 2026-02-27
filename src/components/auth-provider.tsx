@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const mockOrg: Org = {
             id: response.org?.id || "org-1",
-            name: response.org?.name || "Acme Corp",
+            name: response.org?.name || "My Organization",
             timezone: response.org?.timezone || "America/New_York",
             fiscalYear: "January",
           };
