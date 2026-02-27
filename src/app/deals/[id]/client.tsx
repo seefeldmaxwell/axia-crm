@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { useDeal, useUpdateDeal, useDeleteDeal, useActivities } from "@/hooks/use-data";
 import { Deal } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
+import { NotesSection } from "@/components/ui/notes-section";
 import { TrendingUp, ArrowLeft, Calendar, DollarSign, Clock, Phone, Mail, CheckSquare, Trash2 } from "lucide-react";
 import Link from "next/link";
 
@@ -156,7 +157,10 @@ export function DealDetailClient() {
             </Card>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Notes */}
+            <NotesSection recordType="deal" recordId={id} />
+
             <Card>
               <CardHeader>
                 <h2 className="font-semibold text-zen-text">Activity Timeline</h2>

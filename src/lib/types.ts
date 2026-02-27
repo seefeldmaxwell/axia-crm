@@ -120,6 +120,18 @@ export interface ActivityItem {
   createdAt: string;
 }
 
+export interface Note {
+  id: string;
+  recordType: string;
+  recordId: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  orgId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type LeadStatus = "New" | "Contacted" | "Qualified" | "Unqualified";
 
 export interface Lead {

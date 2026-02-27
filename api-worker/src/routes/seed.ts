@@ -33,6 +33,7 @@ app.post('/', async (c) => {
     `CREATE TABLE IF NOT EXISTS emails (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, sender TEXT NOT NULL, sender_email TEXT NOT NULL, subject TEXT NOT NULL, preview TEXT, body TEXT, date TEXT, folder TEXT DEFAULT 'Inbox', read INTEGER DEFAULT 0, starred INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS deal_items (id TEXT PRIMARY KEY, deal_id TEXT NOT NULL, title TEXT NOT NULL, completed INTEGER DEFAULT 0, sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS activity_items (id TEXT PRIMARY KEY, activity_id TEXT NOT NULL, title TEXT NOT NULL, completed INTEGER DEFAULT 0, sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, record_type TEXT NOT NULL, record_id TEXT NOT NULL, content TEXT NOT NULL, author_id TEXT, author_name TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`,
   ];
 
   for (const sql of schemaStatements) {

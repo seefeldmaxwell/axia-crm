@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useLead, useUpdateLead, useDeleteLead, useConvertLead } from "@/hooks/use-data";
 import { Lead } from "@/lib/types";
+import { NotesSection } from "@/components/ui/notes-section";
 import { UserPlus, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 
 export function LeadDetailClient() {
@@ -99,44 +100,48 @@ export function LeadDetailClient() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <Collapsible title="Lead Information">
-              <div className="space-y-3">
-                <InlineEdit label="First Name" value={lead.firstName} onSave={(v) => updateField("firstName", v)} />
-                <InlineEdit label="Last Name" value={lead.lastName} onSave={(v) => updateField("lastName", v)} />
-                <InlineEdit label="Title" value={lead.title} onSave={(v) => updateField("title", v)} />
-                <InlineEdit label="Company" value={lead.company} onSave={(v) => updateField("company", v)} />
-                <InlineEdit label="Industry" value={lead.industry} onSave={(v) => updateField("industry", v)} />
-                <InlineEdit label="Owner" value={lead.ownerName} onSave={(v) => updateField("ownerName", v)} />
-              </div>
-            </Collapsible>
+          <div className="space-y-6">
+            <Card>
+              <Collapsible title="Lead Information">
+                <div className="space-y-3">
+                  <InlineEdit label="First Name" value={lead.firstName} onSave={(v) => updateField("firstName", v)} />
+                  <InlineEdit label="Last Name" value={lead.lastName} onSave={(v) => updateField("lastName", v)} />
+                  <InlineEdit label="Title" value={lead.title} onSave={(v) => updateField("title", v)} />
+                  <InlineEdit label="Company" value={lead.company} onSave={(v) => updateField("company", v)} />
+                  <InlineEdit label="Industry" value={lead.industry} onSave={(v) => updateField("industry", v)} />
+                  <InlineEdit label="Owner" value={lead.ownerName} onSave={(v) => updateField("ownerName", v)} />
+                </div>
+              </Collapsible>
 
-            <Collapsible title="Contact Information">
-              <div className="space-y-3">
-                <InlineEdit label="Email" value={lead.email} onSave={(v) => updateField("email", v)} type="email" />
-                <InlineEdit label="Phone" value={lead.phone} onSave={(v) => updateField("phone", v)} type="tel" />
-              </div>
-            </Collapsible>
-          </Card>
+              <Collapsible title="Contact Information">
+                <div className="space-y-3">
+                  <InlineEdit label="Email" value={lead.email} onSave={(v) => updateField("email", v)} type="email" />
+                  <InlineEdit label="Phone" value={lead.phone} onSave={(v) => updateField("phone", v)} type="tel" />
+                </div>
+              </Collapsible>
+            </Card>
 
-          <Card>
-            <Collapsible title="Lead Details">
-              <div className="space-y-3">
-                <InlineEdit label="Status" value={lead.status} onSave={(v) => updateField("status", v)} />
-                <InlineEdit label="Source" value={lead.source} onSave={(v) => updateField("source", v)} />
-                <InlineEdit label="Rating" value={lead.rating} onSave={(v) => updateField("rating", v)} />
-                {lead.description && (
-                  <InlineEdit label="Description" value={lead.description} onSave={(v) => updateField("description", v)} />
-                )}
-              </div>
-            </Collapsible>
+            <Card>
+              <Collapsible title="Lead Details">
+                <div className="space-y-3">
+                  <InlineEdit label="Status" value={lead.status} onSave={(v) => updateField("status", v)} />
+                  <InlineEdit label="Source" value={lead.source} onSave={(v) => updateField("source", v)} />
+                  <InlineEdit label="Rating" value={lead.rating} onSave={(v) => updateField("rating", v)} />
+                  {lead.description && (
+                    <InlineEdit label="Description" value={lead.description} onSave={(v) => updateField("description", v)} />
+                  )}
+                </div>
+              </Collapsible>
 
-            <Collapsible title="Additional Info">
-              <div className="space-y-2 text-sm text-zen-text-secondary">
-                <p>Created: {lead.createdAt}</p>
-              </div>
-            </Collapsible>
-          </Card>
+              <Collapsible title="Additional Info">
+                <div className="space-y-2 text-sm text-zen-text-secondary">
+                  <p>Created: {lead.createdAt}</p>
+                </div>
+              </Collapsible>
+            </Card>
+          </div>
+
+          <NotesSection recordType="lead" recordId={id} />
         </div>
       </div>
     </DashboardLayout>

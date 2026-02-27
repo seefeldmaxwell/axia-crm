@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAccount, useUpdateAccount, useDeleteAccount, useContacts, useDeals, useCases, useActivities } from "@/hooks/use-data";
 import { Account, Contact, Deal } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
+import { NotesSection } from "@/components/ui/notes-section";
 import { Building2, Phone, Globe, MapPin, ArrowLeft, Users, TrendingUp, Briefcase, Clock, Trash2 } from "lucide-react";
 import Link from "next/link";
 
@@ -145,6 +146,9 @@ export function AccountDetailClient() {
           </div>
 
           <div className="lg:col-span-2 space-y-6">
+            {/* Notes */}
+            <NotesSection recordType="account" recordId={id} />
+
             {/* Related Contacts */}
             <Card>
               <CardHeader>

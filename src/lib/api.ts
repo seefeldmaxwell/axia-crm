@@ -112,6 +112,13 @@ export const api = {
   updateActivity: (id: string, data: any) => apiPut<any>(`/api/activities/${id}`, data),
   deleteActivity: (id: string) => apiDelete(`/api/activities/${id}`),
 
+  // Notes
+  getNotes: (recordType: string, recordId: string) =>
+    apiGet<any[]>(`/api/notes?record_type=${recordType}&record_id=${recordId}`),
+  createNote: (data: any) => apiPost<any>("/api/notes", data),
+  updateNote: (id: string, data: any) => apiPut<any>(`/api/notes/${id}`, data),
+  deleteNote: (id: string) => apiDelete(`/api/notes/${id}`),
+
   // Activity Items (sub-items)
   getActivityItems: (activityId: string) => apiGet<any[]>(`/api/activities/${activityId}/items`),
   createActivityItem: (activityId: string, data: any) => apiPost<any>(`/api/activities/${activityId}/items`, data),
@@ -330,6 +337,20 @@ export function mapDealItem(r: any) {
     completed: r.completed === 1 || r.completed === true,
     sortOrder: r.sort_order || 0,
     createdAt: r.created_at || "",
+  };
+}
+
+export function mapNote(r: any) {
+  return {
+    id: r.id,
+    recordType: r.record_type,
+    recordId: r.record_id,
+    content: r.content,
+    authorId: r.author_id || "",
+    authorName: r.author_name || "",
+    orgId: r.org_id,
+    createdAt: r.created_at || "",
+    updatedAt: r.updated_at || "",
   };
 }
 

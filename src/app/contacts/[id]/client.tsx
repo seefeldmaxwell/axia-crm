@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useContact, useUpdateContact, useDeleteContact, useActivities } from "@/hooks/use-data";
 import { Contact, Activity } from "@/lib/types";
+import { NotesSection } from "@/components/ui/notes-section";
 import { Phone, Mail, MapPin, Building2, Briefcase, Clock, Calendar, CheckSquare, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 
@@ -147,8 +148,11 @@ export function ContactDetailClient() {
             </Card>
           </div>
 
-          {/* Right panel - Activity */}
+          {/* Right panel - Notes & Activity */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Notes */}
+            <NotesSection recordType="contact" recordId={id} />
+
             {/* Upcoming & Overdue */}
             <Card>
               <CardHeader>
