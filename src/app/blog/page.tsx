@@ -33,12 +33,12 @@ export default function BlogPage() {
         }}
       >
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/landing" className="flex items-center gap-3">
+          <a href="https://axia-crm.pages.dev" className="flex items-center gap-3">
             <AxiaLogo size={28} color="#0071E3" />
             <span className="text-[13px] font-semibold tracking-[0.2em] uppercase" style={{ ...mono, color: "var(--text-primary)" }}>
               AXIA
             </span>
-          </Link>
+          </a>
           <div className="flex items-center gap-4">
             <Link
               href="/blog/admin"
@@ -162,9 +162,9 @@ export default function BlogPage() {
           <p className="text-[10px]" style={{ ...mono, color: "var(--text-tertiary)" }}>
             &copy; 2026 Axia Technologies
           </p>
-          <Link href="/landing" className="text-[10px] uppercase tracking-[0.08em]" style={{ ...mono, color: "var(--text-tertiary)" }}>
+          <a href="https://axia-crm.pages.dev" className="text-[10px] uppercase tracking-[0.08em]" style={{ ...mono, color: "var(--text-tertiary)" }}>
             Back to Home
-          </Link>
+          </a>
         </div>
       </footer>
     </div>
