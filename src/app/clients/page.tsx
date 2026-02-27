@@ -16,6 +16,7 @@ import { ShareModal } from "@/components/ui/share-modal";
 import { api, mapClient, toSnake } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Client } from "@/lib/types";
+import { StatusBadge, CLIENT_STATUSES } from "@/components/ui/status-badge";
 import { Plus, Pencil, Trash2, Briefcase, MoreVertical, ArrowRight, Share2, Loader2 } from "lucide-react";
 
 function getStatusColor(status: string): string {
@@ -201,20 +202,21 @@ export default function ClientsPage() {
       key: "status",
       label: "Status",
       sortable: true,
-      render: (row: Record<string, unknown>) => {
-        const status = String(row.status);
-        return (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ background: getStatusColor(status) }}
-            />
-            <span className="text-[12px] font-medium" style={{ color: getStatusColor(status), fontFamily: "var(--font-mono)" }}>
-              {status}
-            </span>
-          </div>
-        );
-      },
+      render: (row: Record<string, unknown>) => (
+        <StatusBadge
+          value={String(row.status)}
+          options={CLIENT_STATUSES}
+          onChange={async (newStatus) => {
+            try {
+              await api.updateClient(String(row.id), toSnake({ status: newStatus }));
+              await fetchClients();
+              toast(`Status updated to ${newStatus}`);
+            } catch {
+              toast("Failed to update status");
+            }
+          }}
+        />
+      ),
     },
     {
       key: "_actions",

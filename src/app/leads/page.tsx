@@ -16,6 +16,7 @@ import { TransferModal } from "@/components/ui/transfer-modal";
 import { ShareModal } from "@/components/ui/share-modal";
 import { api, mapLead, toSnake } from "@/lib/api";
 import { Lead } from "@/lib/types";
+import { StatusBadge, LEAD_STATUSES } from "@/components/ui/status-badge";
 import { Plus, Upload, Pencil, Trash2, UserPlus, MoreVertical, ArrowRight, Share2, Loader2 } from "lucide-react";
 
 type TabId = "ALL" | "COLD" | "WARM" | "HOT" | "CONVERTED";
@@ -251,6 +252,26 @@ export default function LeadsPage() {
     { key: "phone", label: "Phone" },
     { key: "email", label: "Email", sortable: true },
     { key: "source", label: "Source", sortable: true },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      render: (row: Record<string, unknown>) => (
+        <StatusBadge
+          value={String(row.status)}
+          options={LEAD_STATUSES}
+          onChange={async (newStatus) => {
+            try {
+              await api.updateLead(String(row.id), toSnake({ status: newStatus }));
+              await fetchLeads();
+              toast(`Status updated to ${newStatus}`);
+            } catch {
+              toast("Failed to update status");
+            }
+          }}
+        />
+      ),
+    },
     {
       key: "ownerName",
       label: "Owner",
