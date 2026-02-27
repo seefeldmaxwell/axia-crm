@@ -221,6 +221,8 @@ export const api = {
     const query = params.toString() ? `?${params.toString()}` : "";
     return apiGet<any[]>(`/api/calendar/google${query}`);
   },
+  getPermissions: () => apiGet<Record<string, boolean>>("/api/permissions"),
+  setPermission: (permission: string, granted: boolean) => apiPost<any>(`/api/permissions/${permission}`, { granted }),
   getMicrosoftCalendarEvents: (timeMin?: string, timeMax?: string) => {
     const params = new URLSearchParams();
     if (timeMin) params.set("timeMin", timeMin);
