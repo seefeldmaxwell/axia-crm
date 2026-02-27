@@ -386,7 +386,7 @@ export default function DialerPage() {
                       fontFamily: "var(--font-mono)",
                     }}
                   >
-                    (305) 555-0100
+                    No number assigned
                   </p>
                 </div>
               </div>

@@ -77,6 +77,8 @@ export default function MailPage() {
     body: "",
   });
 
+  const [mailgunConnected, setMailgunConnected] = useState(false);
+
   const fetchEmails = useCallback(async () => {
     if (!org) return;
     try {
@@ -92,6 +94,10 @@ export default function MailPage() {
 
   useEffect(() => {
     fetchEmails();
+    api.getIntegrations().then((integrations: any[]) => {
+      const mailgun = integrations.find((i: any) => (i.name || i.type || "").toLowerCase().includes("mailgun"));
+      setMailgunConnected(mailgun?.enabled === true || mailgun?.enabled === 1);
+    }).catch(() => {});
   }, [fetchEmails]);
 
   /* ── Filtered emails ── */
@@ -334,16 +340,16 @@ export default function MailPage() {
               <div className="flex items-center gap-1.5">
                 <CheckCircle
                   size={10}
-                  style={{ color: "var(--accent-green)" }}
+                  style={{ color: mailgunConnected ? "var(--accent-green)" : "var(--text-tertiary)" }}
                 />
                 <span
                   className="text-[10px]"
                   style={{
-                    color: "var(--accent-green)",
+                    color: mailgunConnected ? "var(--accent-green)" : "var(--text-tertiary)",
                     fontFamily: "var(--font-mono)",
                   }}
                 >
-                  CONNECTED
+                  {mailgunConnected ? "CONNECTED" : "NOT CONNECTED"}
                 </span>
               </div>
             </div>

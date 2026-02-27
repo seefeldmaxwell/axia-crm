@@ -18,7 +18,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Plus, Building2 } from "lucide-react";
 
 export default function AccountsPage() {
-  const { org } = useAuth();
+  const { user, org } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -52,8 +52,8 @@ export default function AccountsPage() {
         phone: form.phone,
         website: form.website,
         orgId: org.id,
-        ownerId: "1",
-        ownerName: "Demo User",
+        ownerId: user?.id || "",
+        ownerName: user?.name || "",
       });
       await refetch();
       setShowNew(false);

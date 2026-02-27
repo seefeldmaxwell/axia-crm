@@ -17,7 +17,7 @@ import { Case, CasePriority, CaseStatus } from "@/lib/types";
 import { Plus, Briefcase, Trash2 } from "lucide-react";
 
 export default function CasesPage() {
-  const { org } = useAuth();
+  const { user, org } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -50,8 +50,8 @@ export default function CasesPage() {
         status: form.status,
         priority: form.priority,
         description: form.description,
-        ownerId: "1",
-        ownerName: "Demo User",
+        ownerId: user?.id || "",
+        ownerName: user?.name || "",
         orgId: org.id,
         createdAt: new Date().toISOString().split("T")[0],
       });
