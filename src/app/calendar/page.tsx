@@ -65,6 +65,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBookModal, setShowBookModal] = useState(false);
   const [activities, setActivitiesState] = useState<Activity[]>([]);
+  const [externalEvents, setExternalEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookForm, setBookForm] = useState({
     subject: "",
@@ -87,9 +88,26 @@ export default function CalendarPage() {
     }
   }, [org]);
 
+  const fetchExternalEvents = useCallback(async () => {
+    if (!org) return;
+    const timeMin = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1).toISOString();
+    const timeMax = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0).toISOString();
+    const results: any[] = [];
+    try {
+      const google = await api.getGoogleCalendarEvents(timeMin, timeMax);
+      if (Array.isArray(google)) results.push(...google);
+    } catch { /* no google token */ }
+    try {
+      const ms = await api.getMicrosoftCalendarEvents(timeMin, timeMax);
+      if (Array.isArray(ms)) results.push(...ms);
+    } catch { /* no ms token */ }
+    setExternalEvents(results);
+  }, [org, currentMonth]);
+
   useEffect(() => {
     fetchActivities();
-  }, [fetchActivities]);
+    fetchExternalEvents();
+  }, [fetchActivities, fetchExternalEvents]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -108,17 +126,49 @@ export default function CalendarPage() {
     return allDays;
   }, [monthStart, monthEnd]);
 
-  const activityMap = useMemo(() => {
-    const map: Record<string, Activity[]> = {};
+  // Merge CRM activities + external calendar events into a unified map
+  const allEvents = useMemo(() => {
+    const merged: any[] = [];
+    // CRM activities
     activities.forEach((act) => {
       if (act.dueDate) {
-        const key = act.dueDate;
-        if (!map[key]) map[key] = [];
-        map[key].push(act);
+        merged.push({ ...act, _source: "crm", _date: act.dueDate });
       }
     });
+    // External events (Google / Microsoft)
+    externalEvents.forEach((evt) => {
+      const dateStr = evt.start ? evt.start.substring(0, 10) : "";
+      if (dateStr) {
+        merged.push({
+          id: evt.id,
+          subject: evt.title,
+          type: evt.source === "google" ? "meeting" : "meeting",
+          status: "To Do",
+          dueDate: dateStr,
+          description: evt.description,
+          _source: evt.source, // "google" | "microsoft"
+          _date: dateStr,
+          _allDay: evt.allDay,
+          _start: evt.start,
+          _end: evt.end,
+          _location: evt.location,
+          _htmlLink: evt.htmlLink,
+          _attendees: evt.attendees,
+        });
+      }
+    });
+    return merged;
+  }, [activities, externalEvents]);
+
+  const activityMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    allEvents.forEach((evt) => {
+      const key = evt._date;
+      if (!map[key]) map[key] = [];
+      map[key].push(evt);
+    });
     return map;
-  }, [activities]);
+  }, [allEvents]);
 
   const selectedActivities = useMemo(() => {
     if (!selectedDate) return [];
@@ -394,12 +444,16 @@ export default function CalendarPage() {
 
                   {/* Activity pills */}
                   <div className="mt-1 flex flex-col gap-[3px]">
-                    {dayActivities.slice(0, 4).map((act) => (
+                    {dayActivities.slice(0, 4).map((act: any) => (
                       <div
                         key={act.id}
                         className="h-[3px] rounded-full"
-                        style={{ background: TYPE_COLORS[act.type] }}
-                        title={`${act.type}: ${act.subject}`}
+                        style={{
+                          background: act._source === "google" ? "#4285F4"
+                            : act._source === "microsoft" ? "#00A4EF"
+                            : TYPE_COLORS[act.type as ActivityType] || "var(--accent-blue)",
+                        }}
+                        title={`${act._source === "google" ? "📅 Google" : act._source === "microsoft" ? "📅 Microsoft" : act.type}: ${act.subject}`}
                       />
                     ))}
                     {dayActivities.length > 4 && (
@@ -438,6 +492,14 @@ export default function CalendarPage() {
                 </span>
               </div>
             ))}
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-[3px] rounded-full" style={{ background: "#4285F4" }} />
+              <span className="text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>Google</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-[3px] rounded-full" style={{ background: "#00A4EF" }} />
+              <span className="text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>Microsoft</span>
+            </div>
           </div>
         </div>
 
@@ -547,8 +609,15 @@ export default function CalendarPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {selectedActivities.map((act) => {
-                      const Icon = TYPE_ICONS[act.type];
+                    {selectedActivities.map((act: any) => {
+                      const isExternal = act._source === "google" || act._source === "microsoft";
+                      const borderColor = isExternal
+                        ? (act._source === "google" ? "#4285F4" : "#00A4EF")
+                        : act.type === "call" ? "#2D7FF9"
+                        : act.type === "email" ? "#00B8D9"
+                        : act.type === "meeting" ? "#6554C0"
+                        : "#FFAB00";
+                      const Icon = isExternal ? Users : TYPE_ICONS[act.type as ActivityType] || CheckSquare;
                       return (
                         <div
                           key={act.id}
@@ -556,31 +625,14 @@ export default function CalendarPage() {
                           style={{
                             background: "var(--bg-tertiary)",
                             borderRadius: "var(--radius-sm)",
-                            borderLeft: `3px solid ${
-                              act.type === "call"
-                                ? "#2D7FF9"
-                                : act.type === "email"
-                                ? "#00B8D9"
-                                : act.type === "meeting"
-                                ? "#6554C0"
-                                : "#FFAB00"
-                            }`,
+                            borderLeft: `3px solid ${borderColor}`,
                           }}
                         >
                           <div className="flex items-start gap-2">
                             <Icon
                               size={14}
                               className="mt-0.5 shrink-0"
-                              style={{
-                                color:
-                                  act.type === "call"
-                                    ? "#2D7FF9"
-                                    : act.type === "email"
-                                    ? "#00B8D9"
-                                    : act.type === "meeting"
-                                    ? "#6554C0"
-                                    : "#FFAB00",
-                              }}
+                              style={{ color: borderColor }}
                             />
                             <div className="min-w-0 flex-1">
                               <p
@@ -614,36 +666,65 @@ export default function CalendarPage() {
                                   {act.description}
                                 </p>
                               )}
+                              {/* External event metadata */}
+                              {isExternal && act._start && (
+                                <p className="text-[11px] mt-1" style={{ color: "var(--text-secondary)" }}>
+                                  {act._allDay ? "All day" : `${new Date(act._start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}${act._end ? ` – ${new Date(act._end).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}`}
+                                </p>
+                              )}
+                              {isExternal && act._location && (
+                                <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>📍 {act._location}</p>
+                              )}
+                              {isExternal && act._attendees?.length > 0 && (
+                                <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                                  👥 {act._attendees.map((a: any) => a.name || a.email).join(", ")}
+                                </p>
+                              )}
                               <div className="flex items-center gap-2 mt-2">
-                                <Badge
-                                  variant={
-                                    act.status === "Done"
-                                      ? "success"
-                                      : act.status === "In Progress"
-                                      ? "info"
-                                      : act.status === "Waiting"
-                                      ? "warning"
-                                      : "neutral"
-                                  }
-                                >
-                                  {act.status}
-                                </Badge>
-                                <span
-                                  className="text-[10px] uppercase tracking-[0.06em]"
-                                  style={{
-                                    color:
-                                      act.type === "call"
-                                        ? "#2D7FF9"
-                                        : act.type === "email"
-                                        ? "#00B8D9"
-                                        : act.type === "meeting"
-                                        ? "#6554C0"
-                                        : "#FFAB00",
-                                    fontFamily: "var(--font-mono)",
-                                  }}
-                                >
-                                  {TYPE_LABELS[act.type]}
-                                </span>
+                                {isExternal ? (
+                                  <>
+                                    <Badge variant={act._source === "google" ? "info" : "info"}>
+                                      {act._source === "google" ? "Google" : "Microsoft"}
+                                    </Badge>
+                                    {act._htmlLink && (
+                                      <a href={act._htmlLink} target="_blank" rel="noopener noreferrer" className="text-[10px]" style={{ color: "var(--accent-blue)" }}>
+                                        Open ↗
+                                      </a>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Badge
+                                      variant={
+                                        act.status === "Done"
+                                          ? "success"
+                                          : act.status === "In Progress"
+                                          ? "info"
+                                          : act.status === "Waiting"
+                                          ? "warning"
+                                          : "neutral"
+                                      }
+                                    >
+                                      {act.status}
+                                    </Badge>
+                                    <span
+                                      className="text-[10px] uppercase tracking-[0.06em]"
+                                      style={{
+                                        color:
+                                          act.type === "call"
+                                            ? "#2D7FF9"
+                                            : act.type === "email"
+                                            ? "#00B8D9"
+                                            : act.type === "meeting"
+                                            ? "#6554C0"
+                                            : "#FFAB00",
+                                        fontFamily: "var(--font-mono)",
+                                      }}
+                                    >
+                                      {TYPE_LABELS[act.type as ActivityType]}
+                                    </span>
+                                  </>
+                                )}
                                 <div className="ml-auto flex items-center gap-1">
                                   <button
                                     onClick={() => handleToggleStatus(act)}

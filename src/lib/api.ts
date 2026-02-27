@@ -214,6 +214,20 @@ export const api = {
     const query = params.toString() ? `?${params.toString()}` : "";
     return apiGet<any[]>(`/api/calendar/events${query}`);
   },
+  getGoogleCalendarEvents: (timeMin?: string, timeMax?: string) => {
+    const params = new URLSearchParams();
+    if (timeMin) params.set("timeMin", timeMin);
+    if (timeMax) params.set("timeMax", timeMax);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiGet<any[]>(`/api/calendar/google${query}`);
+  },
+  getMicrosoftCalendarEvents: (timeMin?: string, timeMax?: string) => {
+    const params = new URLSearchParams();
+    if (timeMin) params.set("timeMin", timeMin);
+    if (timeMax) params.set("timeMax", timeMax);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiGet<any[]>(`/api/calendar/microsoft${query}`);
+  },
 
   // Seed
   seed: () => apiPost<any>("/api/seed", {}),
