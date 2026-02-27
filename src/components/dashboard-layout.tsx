@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Avatar } from "./ui/avatar";
+import { AxiaLogo } from "./ui/axia-logo";
 import { ThemeToggle } from "./ui/theme-toggle";
 import { api } from "@/lib/api";
 
@@ -80,16 +81,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Logo + brand */}
       <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 flex items-center justify-center text-white text-[11px] font-bold"
-            style={{
-              background: "var(--accent-blue)",
-              borderRadius: "var(--radius-sm)",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            A
-          </div>
+          <AxiaLogo size={28} color="#0071E3" />
           <span
             className="text-[13px] font-semibold tracking-[0.15em] uppercase"
             style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}

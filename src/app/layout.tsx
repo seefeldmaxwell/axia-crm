@@ -7,6 +7,9 @@ import { ChatBotWrapper } from "@/components/chatbot-wrapper";
 export const metadata: Metadata = {
   title: "Axia CRM",
   description: "Intelligence Platform — Axia CRM",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

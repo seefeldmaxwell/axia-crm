@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { AxiaLogo } from "@/components/ui/axia-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,12 +29,7 @@ export default function LoginPage() {
         <div className="p-8" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "var(--radius-md)" }}>
           {/* Logo mark */}
           <div className="flex justify-center mb-3">
-            <div
-              className="w-12 h-12 flex items-center justify-center"
-              style={{ background: "var(--accent-blue)", borderRadius: "var(--radius-sm)" }}
-            >
-              <span className="text-white text-[22px] font-bold" style={{ fontFamily: "var(--font-mono)" }}>A</span>
-            </div>
+            <AxiaLogo size={48} color="#0071E3" />
           </div>
 
           {/* Title */}
