@@ -34,9 +34,13 @@ export function CaseDetailClient() {
 
   const updateField = async (field: keyof Case, value: string) => {
     if (!org || !caseItem) return;
-    await updateCase.mutate(id, { [field]: value });
-    refetch();
-    toast("Field updated");
+    try {
+      await updateCase.mutate(id, { [field]: value });
+      refetch();
+      toast("Field updated");
+    } catch {
+      toast("Failed to update field");
+    }
   };
 
   const loading = caseLoading || activitiesLoading;

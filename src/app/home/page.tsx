@@ -9,7 +9,6 @@ import {
   ListTodo,
   UserPlus,
   ChevronRight,
-  ArrowUpRight,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -51,11 +50,12 @@ const ratingDotColor: Record<string, string> = {
 export default function HomePage() {
   const { user, org } = useAuth();
 
-  const { data: deals, loading: dealsLoading } = useDeals(org?.id);
-  const { data: activities, loading: activitiesLoading } = useActivities(org?.id);
-  const { data: leads, loading: leadsLoading } = useLeads(org?.id);
+  const { data: deals, loading: dealsLoading, error: dealsError } = useDeals(org?.id);
+  const { data: activities, loading: activitiesLoading, error: activitiesError } = useActivities(org?.id);
+  const { data: leads, loading: leadsLoading, error: leadsError } = useLeads(org?.id);
 
   const loading = dealsLoading || activitiesLoading || leadsLoading;
+  const error = dealsError || activitiesError || leadsError;
 
   const data = useMemo(() => {
     if (!deals || !activities || !leads) return null;
@@ -102,6 +102,19 @@ export default function HomePage() {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-[13px] mb-2" style={{ color: "var(--accent-red)" }}>Failed to load dashboard data</p>
+            <button onClick={() => window.location.reload()} className="text-[12px] px-3 py-1.5" style={{ color: "var(--accent-blue)", border: "1px solid var(--border-primary)", borderRadius: "var(--radius-sm)" }}>Retry</button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!data) return null;
 
   const today = format(new Date(), "MMM dd, yyyy").toUpperCase();
@@ -112,25 +125,21 @@ export default function HomePage() {
       label: "PIPELINE VALUE",
       value: formatCurrency(data.pipelineValue),
       icon: TrendingUp,
-      change: "+12.5%",
     },
     {
       label: "ACTIVE DEALS",
       value: data.activeDealCount.toString(),
       icon: Briefcase,
-      change: "+3",
     },
     {
       label: "OPEN TASKS",
       value: data.openTaskCount.toString(),
       icon: ListTodo,
-      change: "-2",
     },
     {
       label: "NEW LEADS",
       value: data.newLeadCount.toString(),
       icon: UserPlus,
-      change: "+5",
     },
   ];
 
@@ -183,21 +192,6 @@ export default function HomePage() {
                 >
                   {s.value}
                 </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <ArrowUpRight
-                    size={11}
-                    style={{ color: "var(--accent-green)" }}
-                  />
-                  <span
-                    className="text-[10px] font-medium"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--accent-green)",
-                    }}
-                  >
-                    {s.change}
-                  </span>
-                </div>
               </CardContent>
             </Card>
           ))}

@@ -124,6 +124,17 @@ export default function MarketingPage() {
     }
   };
 
+  const handleDeletePost = async (id: string) => {
+    try {
+      await api.deleteMarketingPost(id);
+      toast("Post deleted", "success");
+      await fetchPosts();
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+      toast("Failed to delete post", "error");
+    }
+  };
+
   const getPlatformById = (id: string) =>
     PLATFORMS.find((p) => p.id === id);
 
@@ -393,6 +404,15 @@ export default function MarketingPage() {
                           </>
                         )}
                         <Badge variant="info">{post.status}</Badge>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
+                          className="text-[11px] px-2 py-0.5 transition-colors"
+                          style={{ color: "var(--accent-red)", borderRadius: "var(--radius-sm)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--accent-red-muted)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -462,6 +482,15 @@ export default function MarketingPage() {
                           {formatDateTime(post.createdAt)}
                         </span>
                         <Badge variant="success">Published</Badge>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
+                          className="text-[11px] px-2 py-0.5 transition-colors"
+                          style={{ color: "var(--accent-red)", borderRadius: "var(--radius-sm)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--accent-red-muted)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -472,69 +501,45 @@ export default function MarketingPage() {
                 <CardContent>
                   <div className="grid grid-cols-7 gap-2">
                     {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                      (day) => (
-                        <div key={day} className="text-center">
-                          <p
-                            className="text-[10px] font-medium mb-2 data-label"
-                            style={{ letterSpacing: "0.05em" }}
-                          >
-                            {day}
-                          </p>
-                          <div
-                            className="min-h-[80px] p-2 flex flex-col items-center gap-1"
-                            style={{
-                              backgroundColor: "var(--bg-tertiary)",
-                              borderRadius: "var(--radius-sm)",
-                            }}
-                          >
-                            {day === "Thu" && (
-                              <div
-                                className="w-2.5 h-2.5 rounded-full"
-                                style={{ backgroundColor: "#0A66C2" }}
-                                title="LinkedIn post scheduled"
-                              />
-                            )}
-                            {day === "Fri" && (
-                              <>
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full"
-                                  style={{
-                                    backgroundColor: "#0A66C2",
-                                  }}
-                                />
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full"
-                                  style={{
-                                    backgroundColor: "#1877F2",
-                                  }}
-                                />
-                              </>
-                            )}
-                            {day === "Sat" && (
-                              <>
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full"
-                                  style={{
-                                    backgroundColor: "#0A66C2",
-                                  }}
-                                />
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full"
-                                  style={{
-                                    backgroundColor: "#1DA1F2",
-                                  }}
-                                />
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full"
-                                  style={{
-                                    backgroundColor: "#1877F2",
-                                  }}
-                                />
-                              </>
-                            )}
+                      (day, dayIdx) => {
+                        const dayPosts = posts.filter((p) => {
+                          const dateStr = p.scheduledAt || p.createdAt;
+                          if (!dateStr) return false;
+                          const d = new Date(dateStr);
+                          return (d.getDay() + 6) % 7 === dayIdx;
+                        });
+                        return (
+                          <div key={day} className="text-center">
+                            <p
+                              className="text-[10px] font-medium mb-2 data-label"
+                              style={{ letterSpacing: "0.05em" }}
+                            >
+                              {day}
+                            </p>
+                            <div
+                              className="min-h-[80px] p-2 flex flex-col items-center gap-1"
+                              style={{
+                                backgroundColor: "var(--bg-tertiary)",
+                                borderRadius: "var(--radius-sm)",
+                              }}
+                            >
+                              {dayPosts.map((post) =>
+                                post.platform.split(",").map((pid: string) => {
+                                  const plat = getPlatformById(pid.trim());
+                                  return plat ? (
+                                    <div
+                                      key={`${post.id}-${pid}`}
+                                      className="w-2.5 h-2.5 rounded-full"
+                                      style={{ backgroundColor: plat.color }}
+                                      title={`${plat.name} - ${post.text.slice(0, 50)}`}
+                                    />
+                                  ) : null;
+                                })
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )
+                        );
+                      }
                     )}
                   </div>
                 </CardContent>
@@ -545,28 +550,24 @@ export default function MarketingPage() {
           {/* ── Right Column: Analytics (250px) ── */}
           <div className="w-[250px] shrink-0 flex flex-col gap-4">
             {/* Stats cards */}
-            {[
-              {
-                label: "TOTAL POSTS",
-                value: "47",
-                color: "var(--accent-blue)",
-              },
-              {
-                label: "ENGAGEMENT RATE",
-                value: "4.2%",
-                color: "var(--accent-green)",
-              },
-              {
-                label: "TOP PLATFORM",
-                value: "LinkedIn",
-                color: "#0A66C2",
-              },
-              {
-                label: "BEST TIME TO POST",
-                value: "10:00 AM",
-                color: "var(--accent-yellow)",
-              },
-            ].map((stat) => (
+            {(() => {
+              const platformCounts: Record<string, number> = {};
+              posts.forEach((p) => {
+                p.platform.split(",").forEach((pid: string) => {
+                  const name = getPlatformById(pid.trim())?.name?.split(" ")[0] || pid;
+                  platformCounts[name] = (platformCounts[name] || 0) + 1;
+                });
+              });
+              const topPlatform = Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0];
+              const topPlat = topPlatform ? topPlatform[0] : "N/A";
+              const topPlatObj = PLATFORMS.find((p) => p.name.startsWith(topPlat));
+              return [
+                { label: "TOTAL POSTS", value: `${posts.length}`, color: "var(--accent-blue)" },
+                { label: "PUBLISHED", value: `${publishedPosts.length}`, color: "var(--accent-green)" },
+                { label: "TOP PLATFORM", value: topPlat, color: topPlatObj?.color || "var(--accent-blue)" },
+                { label: "SCHEDULED", value: `${queuePosts.length}`, color: "var(--accent-yellow)" },
+              ];
+            })().map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="py-3">
                   <span className="data-label">{stat.label}</span>

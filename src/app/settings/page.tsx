@@ -626,18 +626,23 @@ export default function SettingsPage() {
                   </Button>
                   <Button
                     variant="primary"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!inviteEmail) {
                         toast("Please enter an email address", "error");
                         return;
                       }
-                      toast(
-                        `Invitation sent to ${inviteEmail}`,
-                        "success"
-                      );
-                      setInviteEmail("");
-                      setInviteRole("rep");
-                      setShowInvite(false);
+                      try {
+                        await api.inviteUser(inviteEmail);
+                        toast(
+                          `Invitation sent to ${inviteEmail}`,
+                          "success"
+                        );
+                        setInviteEmail("");
+                        setInviteRole("rep");
+                        setShowInvite(false);
+                      } catch {
+                        toast("Failed to send invitation", "error");
+                      }
                     }}
                   >
                     Send Invitation

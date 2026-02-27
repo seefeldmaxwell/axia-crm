@@ -42,6 +42,9 @@ export default function LeadsPage() {
   const [transferTarget, setTransferTarget] = useState<Lead | null>(null);
   const [shareTarget, setShareTarget] = useState<Lead | null>(null);
 
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -162,6 +165,49 @@ export default function LeadsPage() {
       toast("Lead deleted");
     } catch {
       toast("Failed to delete lead");
+    }
+  };
+
+  const handleCSVImport = async () => {
+    if (!csvFile || !org || !user) return;
+    setCsvImporting(true);
+    try {
+      const text = await csvFile.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      if (lines.length < 2) { toast("CSV file is empty or has no data rows"); setCsvImporting(false); return; }
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/["']/g, ""));
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map((v) => v.trim().replace(/^["']|["']$/g, ""));
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] || ""; });
+        const firstName = row["first name"] || row["firstname"] || row["first_name"] || "";
+        const lastName = row["last name"] || row["lastname"] || row["last_name"] || "";
+        if (!firstName && !lastName) continue;
+        await api.createLead(toSnake({
+          firstName,
+          lastName,
+          company: row["company"] || "",
+          email: row["email"] || "",
+          phone: row["phone"] || "",
+          source: row["source"] || "CSV Import",
+          rating: "Cold",
+          status: "New",
+          industry: row["industry"] || "",
+          ownerId: user.id,
+          ownerName: user.name,
+          orgId: org.id,
+        }));
+        imported++;
+      }
+      toast(`Imported ${imported} leads`);
+      setCsvFile(null);
+      setShowCSV(false);
+      await fetchLeads();
+    } catch {
+      toast("Failed to import CSV");
+    } finally {
+      setCsvImporting(false);
     }
   };
 
@@ -455,18 +501,25 @@ export default function LeadsPage() {
             <p className="text-[12px] mb-3" style={{ color: "var(--text-tertiary)" }}>
               or click to browse
             </p>
-            <input type="file" accept=".csv" className="hidden" id="csv-upload" />
+            <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={(e) => { if (e.target.files?.[0]) setCsvFile(e.target.files[0]); }} />
             <Button variant="secondary" size="sm" onClick={() => document.getElementById("csv-upload")?.click()}>
               Choose File
             </Button>
+            {csvFile && (
+              <p className="text-[12px] mt-2" style={{ color: "var(--accent-green)" }}>
+                Selected: {csvFile.name}
+              </p>
+            )}
           </div>
           <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
             CSV should include columns: First Name, Last Name, Company, Email, Phone, Source
           </p>
         </div>
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="secondary" onClick={() => setShowCSV(false)}>Cancel</Button>
-          <Button disabled>Import</Button>
+          <Button variant="secondary" onClick={() => { setShowCSV(false); setCsvFile(null); }}>Cancel</Button>
+          <Button onClick={handleCSVImport} disabled={!csvFile || csvImporting}>
+            {csvImporting ? "Importing..." : "Import"}
+          </Button>
         </div>
       </Modal>
 

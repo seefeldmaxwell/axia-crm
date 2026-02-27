@@ -66,13 +66,14 @@ export default function ReportsPage() {
   const { org } = useAuth();
   const [ownerFilter, setOwnerFilter] = useState("all");
 
-  const { data: deals, loading: dealsLoading } = useDeals(org?.id);
-  const { data: leads, loading: leadsLoading } = useLeads(org?.id);
-  const { data: activities, loading: activitiesLoading } = useActivities(
+  const { data: deals, loading: dealsLoading, error: dealsError } = useDeals(org?.id);
+  const { data: leads, loading: leadsLoading, error: leadsError } = useLeads(org?.id);
+  const { data: activities, loading: activitiesLoading, error: activitiesError } = useActivities(
     org?.id
   );
 
   const loading = dealsLoading || leadsLoading || activitiesLoading;
+  const error = dealsError || leadsError || activitiesError;
 
   const data = useMemo(() => {
     if (!deals || !leads || !activities) return null;
@@ -185,6 +186,15 @@ export default function ReportsPage() {
         </div>
       </DashboardLayout>
     );
+
+  if (error) return (
+    <DashboardLayout>
+      <div className="p-6 text-center py-20">
+        <p className="text-[13px] mb-2" style={{ color: "var(--accent-red)" }}>Failed to load report data</p>
+        <button onClick={() => window.location.reload()} className="text-[12px] px-3 py-1.5" style={{ color: "var(--accent-blue)", border: "1px solid var(--border-primary)", borderRadius: "var(--radius-sm)" }}>Retry</button>
+      </div>
+    </DashboardLayout>
+  );
 
   if (!data) return null;
 

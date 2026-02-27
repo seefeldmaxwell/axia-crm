@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 import { User, Org } from "./types";
-import { orgs } from "./mock-data";
 
 export interface AuthContextType {
   user: User | null;
@@ -56,6 +55,3 @@ export function storeOrg(org: Org): void {
   localStorage.setItem("axia_org", JSON.stringify(org));
 }
 
-export function getOrgById(orgId: string): Org | undefined {
-  return orgs.find((o) => o.id === orgId);
-}

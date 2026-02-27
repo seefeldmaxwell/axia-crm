@@ -25,16 +25,24 @@ export function LeadDetailClient() {
 
   const updateField = async (field: keyof Lead, value: string) => {
     if (!org || !lead) return;
-    await updateLead.mutate(id, { [field]: value });
-    refetch();
-    toast("Field updated");
+    try {
+      await updateLead.mutate(id, { [field]: value });
+      refetch();
+      toast("Field updated");
+    } catch {
+      toast("Failed to update field");
+    }
   };
 
   const convertToContact = async () => {
     if (!org || !lead) return;
-    const newContact = await convertLead.mutate(id);
-    toast("Lead converted to contact");
-    router.push(`/contacts/${newContact.id}`);
+    try {
+      const newContact = await convertLead.mutate(id);
+      toast("Lead converted to contact");
+      router.push(`/contacts/${newContact.id}`);
+    } catch {
+      toast("Failed to convert lead");
+    }
   };
 
   if (loading) return <DashboardLayout><div className="p-6"><div className="animate-pulse space-y-4"><div className="h-8 bg-zen-surface-hover rounded w-1/4"></div><div className="h-64 bg-zen-surface-hover rounded"></div></div></div></DashboardLayout>;

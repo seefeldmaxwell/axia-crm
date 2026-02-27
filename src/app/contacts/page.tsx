@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export default function ContactsPage() {
   const { user, org } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -258,6 +260,7 @@ export default function ContactsPage() {
                   name: `${c.firstName} ${c.lastName}`,
                 })) as unknown as Record<string, unknown>[]
               }
+              onRowClick={(item) => router.push(`/contacts/${(item as unknown as Contact).id}`)}
               emptyMessage="No contacts found"
             />
           )}

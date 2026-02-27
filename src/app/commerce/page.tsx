@@ -8,16 +8,24 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { Input, Textarea, Select } from "@/components/ui/input";
 import { Collapsible } from "@/components/ui/collapsible";
-import { useProducts } from "@/hooks/use-data";
+import { useToast } from "@/components/ui/toast";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/use-data";
 import { Product } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { ShoppingCart, Plus, Tag, DollarSign, Package } from "lucide-react";
 
 export default function CommercePage() {
   const { org } = useAuth();
-  const { data: products, loading } = useProducts(org?.id);
+  const { toast } = useToast();
+  const { data: products, loading, error, refetch } = useProducts(org?.id);
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({ name: "", code: "", description: "", price: "", family: "" });
 
   const columns = [
     {
@@ -45,6 +53,38 @@ export default function CommercePage() {
     },
   ];
 
+  const handleCreate = async () => {
+    if (!org) return;
+    try {
+      await createProduct.mutate({
+        name: form.name,
+        code: form.code,
+        description: form.description,
+        price: parseFloat(form.price) || 0,
+        family: form.family,
+        isActive: true,
+        orgId: org.id,
+      });
+      setShowNew(false);
+      setForm({ name: "", code: "", description: "", price: "", family: "" });
+      refetch();
+      toast("Product created successfully");
+    } catch {
+      toast("Failed to create product");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteProduct.mutate(id);
+      setSelectedProduct(null);
+      refetch();
+      toast("Product deleted");
+    } catch {
+      toast("Failed to delete product");
+    }
+  };
+
   if (!org) return null;
 
   if (loading) {
@@ -58,6 +98,17 @@ export default function CommercePage() {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-center py-20">
+          <p className="text-zen-error mb-2">Failed to load products</p>
+          <Button variant="secondary" onClick={refetch}>Retry</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -66,7 +117,7 @@ export default function CommercePage() {
             <h1 className="text-xl font-bold text-zen-text">Products & Price Books</h1>
             <p className="text-sm text-zen-text-secondary">{products.length} products</p>
           </div>
-          <Button>
+          <Button onClick={() => setShowNew(true)}>
             <Plus size={16} className="mr-1" /> New Product
           </Button>
         </div>
@@ -150,6 +201,29 @@ export default function CommercePage() {
             )}
           </div>
         )}
+        {selectedProduct && (
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" onClick={() => handleDelete(selectedProduct.id)}>Delete Product</Button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={showNew} onClose={() => setShowNew(false)} title="New Product" size="md">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Product Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Price ($/mo)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} type="number" />
+            <Input label="Family" value={form.family} onChange={(e) => setForm({ ...form, family: e.target.value })} />
+          </div>
+          <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <Button variant="secondary" onClick={() => setShowNew(false)}>Cancel</Button>
+          <Button onClick={handleCreate}>Save</Button>
+        </div>
       </Modal>
     </DashboardLayout>
   );
