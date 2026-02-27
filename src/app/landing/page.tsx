@@ -15,6 +15,7 @@ import {
   Zap,
   Bot,
 } from "lucide-react";
+import { AxiaLogo } from "@/components/ui/axia-logo";
 
 /* ── Intersection Observer Hook ── */
 
@@ -172,7 +173,7 @@ const pricingTiers = [
   },
   {
     name: "PROFESSIONAL",
-    price: "$49",
+    price: "$60",
     period: "/mo per user",
     description: "For growing teams that need the full command center.",
     features: [
@@ -450,16 +451,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 flex items-center justify-center text-white text-[12px] font-bold"
-              style={{
-                background: "var(--accent-blue)",
-                borderRadius: "var(--radius-sm)",
-                ...mono,
-              }}
-            >
-              A
-            </div>
+            <AxiaLogo size={32} color="#0071E3" />
             <span
               className="text-[14px] font-semibold tracking-[0.25em] uppercase"
               style={{ ...mono, color: "var(--text-primary)" }}
@@ -1308,16 +1300,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <div
-                  className="w-7 h-7 flex items-center justify-center text-white text-[11px] font-bold"
-                  style={{
-                    background: "var(--accent-blue)",
-                    borderRadius: "var(--radius-sm)",
-                    ...mono,
-                  }}
-                >
-                  A
-                </div>
+                <AxiaLogo size={28} color="#0071E3" />
                 <span
                   className="text-[12px] tracking-[0.2em] uppercase"
                   style={{ ...mono, color: "var(--text-secondary)" }}
