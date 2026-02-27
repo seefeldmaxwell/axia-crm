@@ -361,7 +361,7 @@ export default function DealsPage() {
           <div className="flex items-center gap-2 text-[12px] mb-2" style={{ color: "var(--ab-text-secondary)" }}>
             <span>Axia</span>
             <span>/</span>
-            <span>{org.name}</span>
+            <span>{user?.name || "Axia"}</span>
             <span>/</span>
             <span>Boards</span>
             <span>/</span>
@@ -371,7 +371,7 @@ export default function DealsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-[14px] font-semibold" style={{ color: "var(--ab-text)" }}>{org.name} Team</span>
+                <span className="text-[14px] font-semibold" style={{ color: "var(--ab-text)" }}>{user?.name || "My"} Board</span>
                 <ChevronDown size={14} style={{ color: "var(--ab-text-secondary)" }} />
                 <Star size={14} style={{ color: "var(--ab-text-secondary)" }} />
               </div>
