@@ -1,8 +1,8 @@
-import { cases } from "@/lib/mock-data";
 import { CaseDetailClient } from "./client";
 
 export function generateStaticParams() {
-  return cases.map((c) => ({ id: c.id }));
+  // IDs matching D1 seed data
+  return Array.from({ length: 8 }, (_, i) => ({ id: `cs${i + 1}` }));
 }
 
 export default function Page() {

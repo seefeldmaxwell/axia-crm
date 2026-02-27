@@ -118,14 +118,14 @@ const MOCK_EMAILS: Email[] = [
     id: "em-12", sender: "You", senderEmail: "demo@axia.crm",
     subject: "Draft: New Enterprise Plus Tier Announcement",
     preview: "We are excited to announce our new Enterprise Plus tier, designed for organizations with 500+ seats. Features include...",
-    body: "DRAFT - DO NOT SEND\n\nSubject: Introducing Enterprise Plus\n\nDear valued customers,\n\nWe are excited to announce our new Enterprise Plus tier, designed for organizations with 500+ seats.\n\nNew features include:\n- Dedicated infrastructure\n- 99.99% SLA guarantee\n- Custom AI model training\n- White-label options\n- Priority 24/7 support with 15-minute response time\n\nPricing starts at $199/seat/month with annual billing.\n\n[TODO: Add launch date and migration details]",
+    body: "DRAFT - DO NOT SEND\n\nSubject: Introducing Enterprise Plus\n\nDear valued customers,\n\nWe are excited to announce our new Enterprise Plus tier, designed for organizations with 500+ seats.\n\nNew features include:\n- Dedicated infrastructure\n- 99.99% SLA guarantee\n- Custom AI model training\n- White-label options\n- Priority 24/7 support with 15-minute response time\n\nPricing starts at $199/seat/month with annual billing.\n\nLaunch date: March 15, 2026. Existing Enterprise customers can migrate with zero downtime through our automated upgrade wizard.",
     date: "2026-02-24", folder: "Drafts", read: true, starred: false,
   },
   {
     id: "em-13", sender: "You", senderEmail: "demo@axia.crm",
     subject: "Draft: Customer Success Playbook v2",
     preview: "This playbook outlines the key touchpoints and milestones for onboarding new enterprise customers over a 90-day period...",
-    body: "DRAFT\n\nCustomer Success Playbook v2\n\nPhase 1 - Week 1-2: Kickoff\n- Welcome call with stakeholders\n- Technical requirements gathering\n- Data migration planning\n\nPhase 2 - Week 3-6: Implementation\n- System configuration\n- Data import and validation\n- Integration setup\n\nPhase 3 - Week 7-10: Training\n- Admin training sessions\n- End-user training\n- Best practices workshop\n\nPhase 4 - Week 11-12: Go-Live\n- Soft launch with pilot team\n- Full rollout\n- Post-launch review\n\n[TODO: Add success metrics and escalation procedures]",
+    body: "DRAFT\n\nCustomer Success Playbook v2\n\nPhase 1 - Week 1-2: Kickoff\n- Welcome call with stakeholders\n- Technical requirements gathering\n- Data migration planning\n\nPhase 2 - Week 3-6: Implementation\n- System configuration\n- Data import and validation\n- Integration setup\n\nPhase 3 - Week 7-10: Training\n- Admin training sessions\n- End-user training\n- Best practices workshop\n\nPhase 4 - Week 11-12: Go-Live\n- Soft launch with pilot team\n- Full rollout\n- Post-launch review\n\nSuccess Metrics:\n- 90% user adoption within 30 days of go-live\n- CSAT score of 4.5+ at 90-day review\n- Less than 3 support tickets per week after go-live\n\nEscalation: Issues unresolved within 24hrs escalate to VP of Customer Success.",
     date: "2026-02-22", folder: "Drafts", read: true, starred: false,
   },
   {
