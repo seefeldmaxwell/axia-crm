@@ -1,0 +1,7 @@
+# Catch-all for dynamic [id] routes not pre-rendered at build time
+# These serve any pre-rendered shell; the client React code reads the URL param
+/contacts/*  /contacts/c1.html  200
+/accounts/*  /accounts/a1.html  200
+/deals/*     /deals/d1.html     200
+/leads/*     /leads/l1.html     200
+/cases/*     /cases/cs1.html    200
