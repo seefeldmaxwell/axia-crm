@@ -24,6 +24,7 @@ import emails from './routes/emails';
 import mail from './routes/mail';
 import chat from './routes/chat';
 import notes from './routes/notes';
+import blog from './routes/blog';
 
 type Bindings = {
   DB: D1Database;
@@ -67,5 +68,6 @@ app.route('/api/emails', emails);
 app.route('/api/mail', mail);
 app.route('/api/chat', chat);
 app.route('/api/notes', notes);
+app.route('/api/blog', blog);
 
 export default app;

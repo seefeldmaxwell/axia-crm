@@ -354,6 +354,24 @@ export interface CatalogProduct {
   orgId: string;
 }
 
+// ── Blog Post ──
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  coverImage: string;
+  authorId: string;
+  authorName: string;
+  status: "draft" | "published";
+  publishedAt: string | null;
+  orgId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Phone Number (white-labeled) ──
 
 export interface PhoneNumber {

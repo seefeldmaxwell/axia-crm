@@ -119,6 +119,13 @@ export const api = {
   updateNote: (id: string, data: any) => apiPut<any>(`/api/notes/${id}`, data),
   deleteNote: (id: string) => apiDelete(`/api/notes/${id}`),
 
+  // Blog
+  getBlogPosts: (status?: string) => apiGet<any[]>(status ? `/api/blog?status=${status}` : "/api/blog"),
+  getBlogPost: (slug: string) => apiGet<any>(`/api/blog/${slug}`),
+  createBlogPost: (data: any) => apiPost<any>("/api/blog", data),
+  updateBlogPost: (id: string, data: any) => apiPut<any>(`/api/blog/${id}`, data),
+  deleteBlogPost: (id: string) => apiDelete(`/api/blog/${id}`),
+
   // Activity Items (sub-items)
   getActivityItems: (activityId: string) => apiGet<any[]>(`/api/activities/${activityId}/items`),
   createActivityItem: (activityId: string, data: any) => apiPost<any>(`/api/activities/${activityId}/items`, data),
@@ -548,6 +555,24 @@ export function mapTag(r: any) {
   };
 }
 
+export function mapBlogPost(r: any) {
+  return {
+    id: r.id,
+    title: r.title || "",
+    slug: r.slug || "",
+    excerpt: r.excerpt || "",
+    content: r.content || "",
+    coverImage: r.cover_image || "",
+    authorId: r.author_id || "",
+    authorName: r.author_name || "",
+    status: r.status || "draft",
+    publishedAt: r.published_at || null,
+    orgId: r.org_id || "",
+    createdAt: r.created_at || "",
+    updatedAt: r.updated_at || "",
+  };
+}
+
 // ─── camelCase → D1 snake_case for writes ───
 
 export function toSnake(obj: Record<string, any>): Record<string, any> {
@@ -562,6 +587,8 @@ export function toSnake(obj: Record<string, any>): Record<string, any> {
     closedAt: "closed_at", isActive: "is_active", pricingTiers: "pricing_tiers",
     scriptId: "script_id", scheduledAt: "scheduled_at", startDate: "start_date",
     endDate: "end_date", actualCost: "actual_cost", contractValue: "contract_value",
+    coverImage: "cover_image", authorId: "author_id", authorName: "author_name",
+    publishedAt: "published_at",
   };
   const result: Record<string, any> = {};
   for (const [key, val] of Object.entries(obj)) {
